@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Padel Toernooi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amaranth:ital,wght@0,400;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><img src="img/boor-logo.png" alt="BOOR – kwaliteit in onderwijs"><span class="brand-title" id="brandName">Padel Toernooi</span></div>
+    <nav class="tabs">
+      <button data-tab="config">Configuratie</button>
+      <button data-tab="results">Uitslagen</button>
+      <button data-tab="standings">Tussenstand</button>
+    </nav>
+    <div class="top-actions">
+      <button class="btn ghost small" id="btnExport" title="Toernooi opslaan als bestand">Exporteer</button>
+      <button class="btn ghost small" id="btnImport" title="Toernooi laden uit bestand">Importeer</button>
+      <button class="btn ghost small danger" id="btnReset" title="Alles wissen">Reset</button>
+      <input type="file" id="fileImport" accept="application/json,.json" hidden>
+    </div>
+  </header>
+
+  <main>
+    <section id="tab-config" class="tab"></section>
+    <section id="tab-results" class="tab"></section>
+    <section id="tab-standings" class="tab"></section>
+  </main>
+
+  <script src="js/scheduler.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
