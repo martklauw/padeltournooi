@@ -1388,6 +1388,7 @@
         if (!own) state = data ? normalize(data) : (Cloud.canEdit() ? state : defaultState());
         Cloud.applyScores(state, scores);
         cache();
+        renderCloud();
         refresh();
         if (!data && Cloud.canEdit()) offerUpload();
       },
