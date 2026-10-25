@@ -1,7 +1,9 @@
 (() => {
   'use strict';
 
-  const STORE_KEY = 'padel-toernooi-v1';
+  const LOCAL_KEY = 'padel-toernooi-v1';
+  // Online staat een kopie van het gedeelde toernooi apart, zodat een lokaal toernooi bewaard blijft.
+  const STORE_KEY = Cloud.enabled ? 'padel-toernooi-online-v1' : LOCAL_KEY;
   const LEADER_KEY = 'padel-toernooi-leader';
   const BEAMER = new URLSearchParams(location.search).has('beamer');
   const uid = Scheduler.uid;
@@ -40,16 +42,18 @@
     };
   }
 
-  function load() {
+  function load(key = STORE_KEY) {
     try {
-      const s = JSON.parse(localStorage.getItem(STORE_KEY));
-      if (s && s.config) {
-        s.config = { ...defaultState().config, ...s.config };
-        migrate(s);
-        return s;
-      }
+      const s = JSON.parse(localStorage.getItem(key));
+      if (s && s.config) return normalize(s);
     } catch (e) { /* lege of kapotte opslag */ }
     return defaultState();
+  }
+
+  function normalize(s) {
+    s.config = { ...defaultState().config, ...s.config };
+    migrate(s);
+    return s;
   }
 
   // Oudere opgeslagen toernooien omzetten naar het huidige formaat.
@@ -65,9 +69,21 @@
 
   let state = load();
 
-  function save() {
+  // Online schrijven alleen organisatoren: scores per wedstrijd, de rest gebundeld of in één keer.
+  function save(opts = {}) {
+    cache();
+    if (!Cloud.canEdit()) return;
+    if (opts.score) Cloud.saveScore(opts.score.id, opts.score.scoreA, opts.score.scoreB);
+    else if (opts.full) Cloud.replaceAll(state);
+    else Cloud.saveData(state);
+  }
+
+  function cache() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* opslag niet beschikbaar */ }
   }
+
+  // Lokaal (of als online niet bereikbaar is) mag alles; online alleen als organisator.
+  const editable = () => !Cloud.enabled || Cloud.status() === 'error' || Cloud.canEdit();
 
   // ---------- helpers ----------
 
@@ -343,7 +359,7 @@
     });
     state.schedule = { createdAt: Date.now(), poolMode: cfg.poolMode, pools, rounds };
     if (!keepPlayed) state.knockout = null;
-    save();
+    save({ full: true });
     renderAll();
     showTab('results');
   }
@@ -444,8 +460,11 @@
           const w = koWinner(m);
           if (String(next[side]) !== String(w)) {
             next[side] = w;
-            next.scoreA = null;
-            next.scoreB = null;
+            if (next.scoreA != null || next.scoreB != null) {
+              next.scoreA = null;
+              next.scoreB = null;
+              if (Cloud.canEdit()) Cloud.saveScore(next.id, null, null);
+            }
           }
         });
       }
@@ -474,7 +493,8 @@
   // ---------- tabs ----------
 
   function showTab(tab) {
-    if (!['config', 'results', 'standings'].includes(tab)) tab = 'config';
+    if (!['config', 'results', 'standings'].includes(tab)) tab = editable() ? 'config' : 'standings';
+    if (tab === 'config' && !editable()) tab = 'standings';
     $$('.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + tab));
     $$('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     document.body.dataset.tab = tab;
@@ -809,7 +829,7 @@
     const pm = playerMap();
     const scored = hasScore(m);
     const win = scored ? (m.scoreA > m.scoreB ? 'a' : m.scoreA < m.scoreB ? 'b' : 'draw') : '';
-    const disabled = kind === 'ko' && (!m.teamA || !m.teamB);
+    const disabled = !editable() || (kind === 'ko' && (!m.teamA || !m.teamB));
     const tie = kind === 'ko' && scored && m.scoreA === m.scoreB;
     return `
       <div class="match ${scored ? 'scored' : ''} win-${win} ${tie ? 'tie' : ''}" data-mid="${m.id}" data-kind="${kind}">
@@ -829,8 +849,10 @@
     const el = $('#tab-results');
     const s = state.schedule;
     if (!s) {
-      el.innerHTML = `<div class="empty card"><h2>Nog geen schema</h2><p>Stel het toernooi in en klik op <b>Schema maken</b>.</p>
-        <button class="btn primary" data-goto="config">Naar configuratie</button></div>`;
+      el.innerHTML = editable()
+        ? `<div class="empty card"><h2>Nog geen schema</h2><p>Stel het toernooi in en klik op <b>Schema maken</b>.</p>
+          <button class="btn primary" data-goto="config">Naar configuratie</button></div>`
+        : '<div class="empty card"><h2>Nog geen schema</h2><p>Het speelschema verschijnt hier zodra de organisatie het heeft gemaakt.</p></div>';
       return;
     }
     const pm = playerMap();
@@ -866,7 +888,7 @@
         <section class="card ko-section">
           <div class="card-head">
             <h2>Knock-out</h2>
-            <button class="btn ${state.knockout ? 'ghost' : 'primary'}" data-action="start-ko">${state.knockout ? 'Opnieuw indelen' : 'Start knock-out'}</button>
+            ${editable() ? `<button class="btn ${state.knockout ? 'ghost' : 'primary'}" data-action="start-ko">${state.knockout ? 'Opnieuw indelen' : 'Start knock-out'}</button>` : ''}
           </div>
           ${state.knockout
             ? state.knockout.brackets.map(b => `
@@ -920,7 +942,7 @@
       if (!m) return;
       const v = t.value === '' ? null : Math.max(0, Math.min(99, Math.round(+t.value)));
       m['score' + t.dataset.side] = Number.isFinite(v) ? v : null;
-      save();
+      save({ score: m });
       // Licht bijwerken zodat de focus in het invoerveld blijft.
       const scored = hasScore(m);
       box.classList.toggle('scored', scored);
@@ -1263,9 +1285,8 @@
         const s = JSON.parse(reader.result);
         if (!s.config) throw new Error('geen toernooibestand');
         s.config = { ...defaultState().config, ...s.config };
-        migrate(s);
-        state = s;
-        save();
+        state = normalize(s);
+        save({ full: true });
         renderAll();
       } catch (err) {
         alert('Dit bestand kon niet worden geladen: ' + err.message);
@@ -1275,6 +1296,43 @@
   }
 
   // ---------- init ----------
+
+  let errorShown = false;
+  let uploadAsked = false;
+
+  // Herteken na een wijziging van buitenaf zonder de invoer onder je vingers weg te halen.
+  function refresh() {
+    const tab = document.body.dataset.tab;
+    $('#brandName').textContent = state.config.name || 'Padel Toernooi';
+    if (tab === 'standings') { renderStandings(); celebrateLeader(); }
+    else if (tab === 'results' && !document.activeElement?.classList.contains('score')) renderResults();
+    else if (tab === 'config' && !$('#tab-config').contains(document.activeElement)) renderConfig();
+  }
+
+  // Eerste keer online als organisator: het toernooi uit deze browser meenemen?
+  function offerUpload() {
+    if (uploadAsked) return;
+    uploadAsked = true;
+    const hasLocal = (() => { try { return !!localStorage.getItem(LOCAL_KEY); } catch (e) { return false; } })();
+    if (hasLocal && confirm('Er staat nog geen toernooi online. Wil je het toernooi uit deze browser online zetten?')) {
+      state = load(LOCAL_KEY);
+    }
+    save({ full: true });
+    renderAll();
+  }
+
+  function renderCloud() {
+    const bar = $('#cloudBar');
+    document.body.classList.toggle('viewer', !editable());
+    if (!Cloud.enabled) { bar.innerHTML = ''; return; }
+    const st = Cloud.status();
+    const u = Cloud.user();
+    const dot = st === 'live' ? '<span class="dot-live"></span>Live' : st === 'error' ? '⚠️ Offline' : 'Verbinden…';
+    bar.innerHTML = `<span class="cloud-state" title="${st === 'error' ? 'Online toernooi niet bereikbaar; je werkt lokaal in deze browser.' : 'Wijzigingen zijn direct voor iedereen zichtbaar.'}">${dot}</span>`
+      + (st === 'error' ? ''
+        : u ? `<span class="cloud-user" title="${esc(u.email)}">${Cloud.canEdit() ? 'Organisator' : 'Kijker'}</span><button class="btn ghost small" data-action="signout">Uitloggen</button>`
+        : '<button class="btn small" data-action="signin">Inloggen organisator</button>');
+  }
 
   function renderAll() {
     $('#brandName').textContent = state.config.name || 'Padel Toernooi';
@@ -1307,23 +1365,56 @@
     $('#btnReset').addEventListener('click', () => {
       if (!confirm('Alles wissen en opnieuw beginnen? Exporteer eerst als je het toernooi wilt bewaren.')) return;
       state = defaultState();
-      save();
+      save({ full: true });
       renderAll();
       showTab('config');
     });
 
     // Een ander tabblad (bijv. de beamer) volgt wijzigingen live.
     window.addEventListener('storage', e => {
-      if (e.key !== STORE_KEY) return;
+      if (e.key !== STORE_KEY || Cloud.enabled) return;
       state = load();
-      const tab = document.body.dataset.tab;
-      if (tab === 'standings') { renderStandings(); celebrateLeader(); }
-      else if (tab === 'results' && !document.activeElement?.classList.contains('score')) renderResults();
-      else if (tab === 'config' && !$('#tab-config').contains(document.activeElement)) renderConfig();
+      refresh();
     });
 
+    $('#cloudBar').addEventListener('click', e => {
+      const a = e.target.closest('[data-action]')?.dataset.action;
+      if (a === 'signin') Cloud.signIn();
+      if (a === 'signout') Cloud.signOut();
+    });
+
+    Cloud.init({
+      onData({ data, scores, own }) {
+        if (!own) state = data ? normalize(data) : (Cloud.canEdit() ? state : defaultState());
+        Cloud.applyScores(state, scores);
+        cache();
+        refresh();
+        if (!data && Cloud.canEdit()) offerUpload();
+      },
+      onAuth() {
+        renderCloud();
+        renderAll();
+        showTab(document.body.dataset.tab);
+        if (Cloud.canEdit() && Cloud.remoteEmpty()) offerUpload();
+      },
+      onDenied(email) {
+        alert(`Je bent ingelogd als ${email}, maar dit account mag het toernooi niet wijzigen. Je kunt wel meekijken.`);
+      },
+      onStatus() {
+        renderCloud();
+        renderAll();
+      },
+      onError(e) {
+        if (!errorShown) alert('Opslaan online is mislukt: ' + (e.message || e) + '\nControleer je internetverbinding.');
+        errorShown = true;
+      },
+    });
+
+    renderCloud();
     renderAll();
-    showTab(BEAMER ? 'standings' : (location.hash.slice(1) || (state.schedule ? 'results' : 'config')));
+    const startTab = location.hash.slice(1)
+      || (Cloud.enabled ? 'standings' : state.schedule ? 'results' : 'config');
+    showTab(BEAMER ? 'standings' : startTab);
 
     if (BEAMER) {
       // Wissel in de beamerweergave elke 20 seconden tussen totaal en poules.

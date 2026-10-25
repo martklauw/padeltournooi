@@ -17,6 +17,7 @@
       <button data-tab="results">Uitslagen</button>
       <button data-tab="standings">Tussenstand</button>
     </nav>
+    <div class="cloud" id="cloudBar"></div>
     <div class="top-actions">
       <button class="btn ghost small" id="btnExport" title="Toernooi opslaan als bestand">Exporteer</button>
       <button class="btn ghost small" id="btnImport" title="Toernooi laden uit bestand">Importeer</button>
@@ -31,6 +32,10 @@
     <section id="tab-standings" class="tab"></section>
   </main>
 
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <script src="js/cloud.js"></script>
   <script src="js/scheduler.js"></script>
   <script src="js/app.js"></script>
 </body>
