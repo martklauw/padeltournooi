@@ -682,6 +682,15 @@
         </div>
 
         <div class="card span-2 summary" id="planSummary"></div>
+
+        <div class="card span-2 mobile-only file-actions">
+          <h2>Bestand</h2>
+          <div class="inline">
+            <button class="btn" data-action="file-export">Exporteer</button>
+            <button class="btn" data-action="file-import">Importeer</button>
+            <button class="btn danger" data-action="file-reset">Reset</button>
+          </div>
+        </div>
       </div>`;
     renderSummary();
   }
@@ -819,7 +828,10 @@
       if (!btn) return;
       const c = state.config;
       const a = btn.dataset.action;
-      if (a === 'upload-players') {
+      if (a.startsWith('file-')) {
+        $({ 'file-export': '#btnExport', 'file-import': '#btnImport', 'file-reset': '#btnReset' }[a]).click();
+        return;
+      } else if (a === 'upload-players') {
         $('#playersFile').click();
         return;
       } else if (a === 'import-replace' || a === 'import-append' || a === 'import-cancel') {
@@ -1145,7 +1157,7 @@
               }).join('')}
             </div>` : ''}
 
-            <table class="ranking">
+            <table class="ranking ${byAvg ? 'by-avg' : ''}">
               <thead><tr>
                 <th>#</th><th></th><th class="left">Speler</th><th title="Niveau">Nv</th><th title="Gespeeld">P</th>
                 <th title="Gewonnen potjes">W</th><th title="Games voor" class="${byAvg ? '' : 'hl'}">Games</th>
@@ -1428,6 +1440,16 @@
       state = load();
       refresh();
     });
+
+    // Kopbalk verbergen bij naar beneden scrollen, terug bij omhoog scrollen.
+    let lastY = window.scrollY;
+    window.addEventListener('scroll', () => {
+      const y = window.scrollY;
+      const bar = $('.topbar');
+      if (y > lastY + 6 && y > bar.offsetHeight) bar.classList.add('bar-hidden');
+      else if (y < lastY - 6 || y < 20) bar.classList.remove('bar-hidden');
+      lastY = y;
+    }, { passive: true });
 
     $('#cloudBar').addEventListener('click', e => {
       const a = e.target.closest('[data-action]')?.dataset.action;
