@@ -426,3 +426,10 @@ body.beamer .arena-wrap::after { display: none; }
 .cloud-user { padding: 3px 10px; border-radius: 99px; background: var(--t-pink); color: var(--navy); }
 body.viewer .tabs [data-tab="config"], body.viewer #btnImport, body.viewer #btnReset, body.viewer #btnExport { display: none; }
 body.viewer .score { background: #fff; color: var(--navy); opacity: 1; }
+
+/* ---------- deelnemers uploaden ---------- */
+.import-preview { margin-top: 14px; padding: 16px 18px; border-radius: 16px; background: var(--t-blue); border: 2px dashed var(--blue); }
+.import-preview h3 { color: var(--blue); }
+.import-names { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; max-height: 220px; overflow: auto; }
+.import-names span { display: inline-flex; align-items: center; gap: 6px; background: #fff; border-radius: 99px; padding: 3px 4px 3px 12px; font-size: .85rem; font-weight: 700; }
+.import-names .lv { min-width: 20px; height: 20px; font-size: .7rem; border-radius: 99px; }

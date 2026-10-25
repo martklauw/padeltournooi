@@ -569,8 +569,11 @@
                 </tr>`).join('')}
             </tbody>
           </table>
+          ${importPreviewHtml()}
           <div class="row-actions">
             <button class="btn" data-action="add-player">+ Speler</button>
+            <button class="btn" data-action="upload-players">📄 Deelnemers uploaden (Excel/CSV)</button>
+            <input type="file" id="playersFile" accept=".csv,.txt,.tsv,.xlsx,.xlsm,.xlsb,.xls,.ods" hidden>
             <details class="bulk">
               <summary>Lijst plakken</summary>
               <p class="muted">Eén speler per regel, bijvoorbeeld <code>Sanne, gevorderd</code>, <code>Mark beginner</code> of <code>Joost ?</code>. Zonder niveau wordt het “weet ik niet”.</p>
@@ -720,6 +723,27 @@
       ${played ? '<p class="muted">Speler afwezig of erbij gekomen? Pas de aanwezigheid aan en kies “Herplan open rondes”: gespeelde rondes blijven staan en de rest wordt opnieuw ingedeeld.</p>' : ''}`;
   }
 
+  // Resultaat van een geüpload bestand; alleen in het geheugen tot je kiest wat ermee moet.
+  let importPreview = null;
+
+  function importPreviewHtml() {
+    const ip = importPreview;
+    if (!ip) return '';
+    const counts = LEVELS.map(L => `${ip.players.filter(p => levelInfo(p.level) === L).length} ${L.label.toLowerCase()}`).join(' · ');
+    return `
+      <div class="import-preview" id="importPreview">
+        <h3>${ip.players.length} deelnemers gevonden</h3>
+        <p class="muted">${counts}${ip.skipped ? ` · ${ip.skipped} regel${ip.skipped === 1 ? '' : 's'} zonder naam overgeslagen` : ''}.
+          Alleen de voornaam en de eerste letter van de achternaam worden bewaard; het bestand zelf wordt niet opgeslagen.</p>
+        <div class="import-names">${ip.players.map(p => `<span>${esc(p.name)} ${levelBadge(p.level)}</span>`).join('')}</div>
+        <div class="inline">
+          <button class="btn primary" data-action="import-replace">Vervang spelerslijst</button>
+          <button class="btn" data-action="import-append">Voeg toe aan lijst</button>
+          <button class="btn ghost" data-action="import-cancel">Annuleer</button>
+        </div>
+      </div>`;
+  }
+
   function parseBulk(text) {
     return text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
       const sep = l.match(/^(.*)[,;:\t](.*)$/);
@@ -766,7 +790,20 @@
     root.addEventListener('change', e => {
       const t = e.target;
       const c = state.config;
-      if (t.id === 'courtCount') {
+      if (t.id === 'playersFile') {
+        const file = t.files[0];
+        t.value = '';
+        if (!file) return;
+        Importer.parseFile(file).then(res => {
+          if (!res.players.length) {
+            alert('Er zijn geen deelnemers gevonden in dit bestand. Staat er een kolom met namen in?');
+            return;
+          }
+          importPreview = res;
+          renderConfig();
+          $('#importPreview')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }).catch(err => alert('Dit bestand kon niet worden gelezen: ' + err.message));
+      } else if (t.id === 'courtCount') {
         const n = Math.max(1, Math.min(30, +t.value || 1));
         while (c.courts.length < n) c.courts.push({ id: uid(), name: `Baan ${c.courts.length + 1}` });
         c.courts.length = n;
@@ -782,7 +819,22 @@
       if (!btn) return;
       const c = state.config;
       const a = btn.dataset.action;
-      if (a === 'add-player') {
+      if (a === 'upload-players') {
+        $('#playersFile').click();
+        return;
+      } else if (a === 'import-replace' || a === 'import-append' || a === 'import-cancel') {
+        const list = (importPreview?.players || []).map(p => ({ id: uid(), name: p.name, level: p.level, active: true }));
+        importPreview = null;
+        if (a === 'import-replace') {
+          if (c.players.length && !confirm(`De huidige ${c.players.length} spelers vervangen door ${list.length} deelnemers uit het bestand?`)) return;
+          c.players = list;
+        } else if (a === 'import-append') {
+          const have = new Set(c.players.map(p => p.name.trim().toLowerCase()));
+          const fresh = list.filter(p => !have.has(p.name.toLowerCase()));
+          if (fresh.length < list.length) alert(`${list.length - fresh.length} deelnemer(s) stonden al in de lijst en zijn overgeslagen.`);
+          c.players = c.players.concat(fresh);
+        }
+      } else if (a === 'add-player') {
         c.players.push({ id: uid(), name: `Speler ${c.players.length + 1}`, level: 5, active: true });
       } else if (a === 'del-player') {
         const id = btn.closest('tr').dataset.pid;
