@@ -522,3 +522,14 @@ body.viewer .score { background: #fff; color: var(--navy); opacity: 1; }
 .import-names .lv { min-width: 20px; height: 20px; font-size: .7rem; border-radius: 99px; }
 
 .file-actions h2 { margin-bottom: .4em; }
+
+/* ---------- persoonlijk schema ---------- */
+.player-pick { margin-bottom: 16px; border-top: 5px solid var(--pink); }
+.player-pick .field { margin-bottom: 0; font-family: var(--head); font-size: 1.05rem; color: var(--blue); }
+.player-pick select { font-family: inherit; font-size: 1rem; font-weight: 700; color: var(--navy); max-width: 420px; }
+.me-summary { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--t-pink); color: var(--navy); }
+.me-summary p { margin: 6px 0 0; }
+.toolbar.hidden { display: none; }
+.team .pn.me { background: var(--t-yellow); border-radius: 8px; padding: 1px 6px; margin: -1px -6px; }
+.rest-round { border-top-color: var(--t-orange); }
+.rest-card { padding: 10px 14px; border-radius: 12px; background: var(--t-blue); font-weight: 700; color: var(--muted); }

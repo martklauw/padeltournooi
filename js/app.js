@@ -14,6 +14,7 @@
 
   const KO_TEAMS = { none: 0, final: 2, semi: 4, quarter: 8, eighth: 16 };
   const KO_NAMES = { 2: 'Finale', 4: 'Halve finale', 8: 'Kwartfinale', 16: 'Achtste finale' };
+  const POOL_NAMES = { BEG: 'Recreatief', ADV: 'Ervaren' };
 
   // ---------- state ----------
 
@@ -65,6 +66,9 @@
     if (s.knockout && !s.knockout.brackets) {
       s.knockout = { brackets: [{ poolId: null, name: 'Knock-out', seeds: s.knockout.seeds, rounds: s.knockout.rounds }] };
     }
+    // Poules heetten eerder "Beginners" en "Gevorderden".
+    s.schedule?.pools?.forEach(p => { if (POOL_NAMES[p.id]) p.name = POOL_NAMES[p.id]; });
+    s.knockout?.brackets?.forEach(b => { if (POOL_NAMES[b.poolId]) b.name = POOL_NAMES[b.poolId]; });
   }
 
   let state = load();
@@ -117,11 +121,11 @@
 
   const usesPools = cfg => cfg.poolMode === 'level' || cfg.poolMode === 'mixed';
 
-  // Twee aparte toernooien: beginners en gevorderden. "Weet ik niet" volgt de instelling unknownTo.
+  // Twee aparte toernooien: recreatief en ervaren. "Weet ik niet" volgt de instelling unknownTo.
   function makeLevelPools(players, cfg) {
     const pools = [
-      { id: 'BEG', name: 'Beginners', playerIds: [] },
-      { id: 'ADV', name: 'Gevorderden', playerIds: [] },
+      { id: 'BEG', name: POOL_NAMES.BEG, playerIds: [] },
+      { id: 'ADV', name: POOL_NAMES.ADV, playerIds: [] },
     ];
     const isUnknown = p => levelInfo(p.level) === LEVELS[2];
     Scheduler.shuffle(players.slice())
@@ -157,7 +161,7 @@
     return t >= 2 ? t : 0;
   }
 
-  // Knock-outs per poule (bij beginners/gevorderden) of één gezamenlijke. Finales vallen gelijk.
+  // Knock-outs per poule (bij recreatief/ervaren) of één gezamenlijke. Finales vallen gelijk.
   function koPlan(cfg, spec) {
     const teams = KO_TEAMS[cfg.koType] || 0;
     if (!teams) return { brackets: [], stages: [], maxDepth: 0 };
@@ -507,8 +511,8 @@
 
   // Drie niveaus; intern een getal zodat het schema teams kan balanceren.
   const LEVELS = [
-    { value: 3, label: 'Beginner', short: 'B', cls: 'lv-beg' },
-    { value: 7, label: 'Gevorderd', short: 'G', cls: 'lv-adv' },
+    { value: 3, label: 'Recreatief', short: 'R', cls: 'lv-beg' },
+    { value: 7, label: 'Ervaren', short: 'E', cls: 'lv-adv' },
     { value: 5, label: 'Weet ik niet', short: '?', cls: 'lv-unk' },
   ];
   function levelInfo(l) {
@@ -522,8 +526,8 @@
   function parseLevel(s) {
     s = s.trim().toLowerCase();
     if (/^[1-9]$/.test(s)) return levelInfo(+s).value;
-    if (/^(b|beg|beginner|beginners|beginnend)$/.test(s)) return 3;
-    if (/^(g|gev|gevorderd|gevorderde)$/.test(s)) return 7;
+    if (/^(r|rec|recreatief|recreant|b|beg|beginner|beginners|beginnend)$/.test(s)) return 3;
+    if (/^(e|erv|ervaren|g|gev|gevorderd|gevorderde)$/.test(s)) return 7;
     if (/^(\?|onbekend|weet ik niet|weetikniet|x)$/.test(s)) return 5;
     return null;
   }
@@ -576,8 +580,8 @@
             <input type="file" id="playersFile" accept=".csv,.txt,.tsv,.xlsx,.xlsm,.xlsb,.xls,.ods" hidden>
             <details class="bulk">
               <summary>Lijst plakken</summary>
-              <p class="muted">Eén speler per regel, bijvoorbeeld <code>Sanne, gevorderd</code>, <code>Mark beginner</code> of <code>Joost ?</code>. Zonder niveau wordt het “weet ik niet”.</p>
-              <textarea id="bulkPlayers" rows="6" placeholder="Sanne, gevorderd&#10;Mark, beginner&#10;Joost, ?"></textarea>
+              <p class="muted">Eén speler per regel, bijvoorbeeld <code>Sanne, ervaren</code>, <code>Mark recreatief</code> of <code>Joost ?</code>. Zonder niveau wordt het “weet ik niet”.</p>
+              <textarea id="bulkPlayers" rows="6" placeholder="Sanne, ervaren&#10;Mark, recreatief&#10;Joost, ?"></textarea>
               <div class="inline">
                 <button class="btn" data-action="bulk-replace">Vervang lijst</button>
                 <button class="btn ghost" data-action="bulk-append">Voeg toe</button>
@@ -619,18 +623,18 @@
           <h2>Poulefase</h2>
           <label class="field">Indeling
             <select data-field="poolMode">
-              <option value="level" ${c.poolMode === 'level' ? 'selected' : ''}>Twee toernooien: beginners en gevorderden</option>
+              <option value="level" ${c.poolMode === 'level' ? 'selected' : ''}>Twee toernooien: recreatief en ervaren</option>
               <option value="mixed" ${c.poolMode === 'mixed' ? 'selected' : ''}>Gemengde poules, even sterk verdeeld</option>
               <option value="none" ${c.poolMode === 'none' ? 'selected' : ''}>Geen poules, iedereen speelt door elkaar</option>
             </select>
           </label>
           ${c.poolMode === 'level' ? `
-            <p class="muted">Beginners en gevorderden spelen elk in een eigen poule en nooit tegen elkaar. Elke poule heeft een eigen ranglijst en een eigen knock-out.</p>
+            <p class="muted">Recreatieve en ervaren spelers spelen elk in een eigen poule en nooit tegen elkaar. Elke poule heeft een eigen ranglijst en een eigen knock-out.</p>
             <label class="field">Spelers met “weet ik niet” spelen bij
               <select data-field="unknownTo">
                 <option value="balance" ${c.unknownTo === 'balance' ? 'selected' : ''}>De kleinste poule (poules even groot)</option>
-                <option value="beginner" ${c.unknownTo === 'beginner' ? 'selected' : ''}>De beginners</option>
-                <option value="advanced" ${c.unknownTo === 'advanced' ? 'selected' : ''}>De gevorderden</option>
+                <option value="beginner" ${c.unknownTo === 'beginner' ? 'selected' : ''}>De recreatieve poule</option>
+                <option value="advanced" ${c.unknownTo === 'advanced' ? 'selected' : ''}>De ervaren poule</option>
               </select>
             </label>` : ''}
           ${c.poolMode === 'mixed' ? `
@@ -675,7 +679,7 @@
             <input type="number" min="1" max="180" data-field="koMatchMinutes" data-num value="${c.koMatchMinutes}" ${c.koType === 'none' ? 'disabled' : ''}>
           </label>
           <p class="muted">${{
-            level: 'Beginners en gevorderden spelen elk een eigen knock-out met de besten uit hun poule. Is een poule te klein, dan begint die knock-out automatisch later (bijvoorbeeld alleen een finale). De finales worden tegelijk gespeeld.',
+            level: 'Recreatief en Ervaren spelen elk een eigen knock-out met de besten uit hun poule. Is een poule te klein, dan begint die knock-out automatisch later (bijvoorbeeld alleen een finale). De finales worden tegelijk gespeeld.',
             mixed: 'Uit elke poule plaatsen de besten zich evenredig; eventuele resterende plekken gaan naar de beste overige spelers.',
             none: 'De best geplaatste spelers in de individuele ranglijst plaatsen zich.',
           }[c.poolMode]}</p>
@@ -878,15 +882,65 @@
     });
   }
 
-  // ---------- uitslagen ----------
+  // ---------- schema en uitslagen ----------
 
   let hideDone = false;
+
+  // Gekozen speler voor "mijn schema"; per apparaat onthouden.
+  const FOCUS_KEY = 'padel-toernooi-speler';
+  let focusPlayer = (() => { try { return localStorage.getItem(FOCUS_KEY) || ''; } catch (e) { return ''; } })();
 
   function teamHtml(team, pm, cls = '') {
     if (!team) return `<div class="team ${cls} tbd">nog onbekend</div>`;
     return `<div class="team ${cls}">
-      ${team.map(id => `<span class="pn">${esc(pname(id, pm))} ${levelBadge(pm.get(id)?.level)}</span>`).join('')}
+      ${team.map(id => `<span class="pn ${id === focusPlayer ? 'me' : ''}">${esc(pname(id, pm))} ${levelBadge(pm.get(id)?.level)}</span>`).join('')}
     </div>`;
+  }
+
+  const inMatch = (m, id) => !!(m.teamA?.includes(id) || m.teamB?.includes(id));
+
+  function playerPickHtml(pm) {
+    const s = state.schedule;
+    const option = id => `<option value="${id}" ${id === focusPlayer ? 'selected' : ''}>${esc(pname(id, pm))}</option>`;
+    const byName = ids => ids.filter(id => pm.has(id)).sort((a, b) => pname(a, pm).localeCompare(pname(b, pm)));
+    const options = s.pools
+      ? s.pools.map(p => `<optgroup label="${esc(p.name)}">${byName(p.playerIds).map(option).join('')}</optgroup>`).join('')
+      : byName(scheduledPlayerIds()).map(option).join('');
+    return `
+      <div class="card player-pick">
+        <label class="field">Bekijk het schema van
+          <select id="playerPick"><option value="">Alle spelers</option>${options}</select>
+        </label>
+        ${focusPlayer ? personalSummary(pm) : ''}
+      </div>`;
+  }
+
+  function personalSummary(pm) {
+    const s = state.schedule;
+    const id = focusPlayer;
+    const mine = s.rounds.map((r, i) => ({ i, m: r.matches.find(x => inMatch(x, id)), rest: r.resting.includes(id) }));
+    const played = mine.filter(x => x.m).length;
+    const rests = mine.filter(x => x.rest).length;
+    const next = mine.find(x => x.m && !hasScore(x.m));
+    const koNext = (state.knockout?.brackets || []).flatMap(b => b.rounds.flatMap(r => r.matches.map(m => ({ m, round: r.name }))))
+      .find(x => inMatch(x.m, id) && x.m.teamA && x.m.teamB && !koWinner(x.m));
+    const pool = s.pools?.find(p => p.playerIds.includes(id));
+    const ranking = computeStandings(pool ? pool.playerIds : scheduledPlayerIds());
+    const pos = ranking.findIndex(r => r.id === id);
+    const team = (t) => t.map(x => esc(pname(x, pm))).join(' & ');
+    const partnerAndOpp = m => {
+      const mineTeam = m.teamA.includes(id) ? m.teamA : m.teamB;
+      const other = mineTeam === m.teamA ? m.teamB : m.teamA;
+      return `met <b>${team(mineTeam.filter(x => x !== id))}</b> tegen <b>${team(other)}</b>`;
+    };
+    let nextText = '';
+    if (next) nextText = `Volgende: <b>ronde ${next.i + 1} om ${fmt(roundStart(next.i))}</b> op ${esc(courtName(next.m.courtId))}, ${partnerAndOpp(next.m)}`;
+    else if (koNext) nextText = `Volgende: <b>${esc(koNext.round)}${koNext.m.time != null ? ` om ${fmt(koNext.m.time)}` : ''}</b> op ${esc(courtName(koNext.m.courtId))}, ${partnerAndOpp(koNext.m)}`;
+    return `
+      <div class="me-summary">
+        <span>${played} potje${played === 1 ? '' : 's'}${rests ? ` · ${rests}× rust` : ''}${pos >= 0 && ranking[pos].played ? ` · nu <b>#${pos + 1}</b>${pool ? ` bij ${esc(pool.name)}` : ''}` : ''}</span>
+        ${nextText ? `<p>${nextText}</p>` : ''}
+      </div>`;
   }
 
   function matchHtml(m, kind, extra = '') {
@@ -924,18 +978,38 @@
     const all = s.rounds.flatMap(r => r.matches);
     const done = all.filter(hasScore).length;
     const koTeams = KO_TEAMS[cfg.koType];
+    if (focusPlayer && !pm.has(focusPlayer)) focusPlayer = '';
+    const me = focusPlayer;
+    const koMine = state.knockout && me
+      ? state.knockout.brackets.flatMap(b => b.rounds.flatMap(r => r.matches.filter(m => inMatch(m, me)).map(m => ({ m, round: r.name }))))
+      : [];
     el.innerHTML = `
-      <div class="toolbar card">
+      ${playerPickHtml(pm)}
+      <div class="toolbar card ${me ? 'hidden' : ''}">
         <div><b id="progressText">${done} / ${all.length}</b> poulepotjes ingevuld</div>
         <div class="progress"><div style="width:${all.length ? (done / all.length) * 100 : 0}%"></div></div>
         <label class="switch"><input type="checkbox" id="hideDone" ${hideDone ? 'checked' : ''}><span>Verberg afgeronde rondes</span></label>
         <button class="btn ghost" data-action="print">Print schema</button>
       </div>
-      ${s.pools ? `<div class="card pools">${s.pools.map(p => `<div><h3>${esc(p.name)}</h3><p>${p.playerIds.map(id => esc(pname(id, pm))).join(', ')}</p></div>`).join('')}</div>` : ''}
+      ${s.pools && !me ? `<div class="card pools">${s.pools.map(p => `<div><h3>${esc(p.name)}</h3><p>${p.playerIds.map(id => esc(pname(id, pm))).join(', ')}</p></div>`).join('')}</div>` : ''}
       <div class="rounds">
         ${s.rounds.map((r, i) => {
           const complete = r.matches.length && r.matches.every(hasScore);
           const t = roundStart(i);
+          if (me) {
+            // Persoonlijk schema: alleen de eigen wedstrijd of een rustbeurt.
+            const m = r.matches.find(x => inMatch(x, me));
+            if (!m && !r.resting.includes(me)) return '';
+            return `
+              <section class="round ${m && hasScore(m) ? 'complete' : ''} ${m ? '' : 'rest-round'}" data-round="${i}">
+                <header>
+                  <h3>Ronde ${i + 1}</h3>
+                  <span class="time">${fmt(t)} – ${fmt(t + (+cfg.matchMinutes || 0))}</span>
+                  <span class="badge">${m ? (hasScore(m) ? '✓ gespeeld' : esc(courtName(m.courtId))) : 'rust'}</span>
+                </header>
+                ${m ? `<div class="matches">${matchHtml(m, 'pool')}</div>` : '<div class="rest-card">☕ Rust deze ronde</div>'}
+              </section>`;
+          }
           return `
             <section class="round ${complete ? 'complete' : ''} ${complete && hideDone ? 'hidden' : ''}" data-round="${i}">
               <header>
@@ -948,7 +1022,12 @@
             </section>`;
         }).join('')}
       </div>
-      ${koTeams ? `
+      ${me && koMine.length ? `
+        <section class="card ko-section">
+          <div class="card-head"><h2>Knock-out</h2></div>
+          ${koMine.map(x => `<h3>${esc(x.round)}</h3><div class="matches">${matchHtml(x.m, 'ko', x.m.time != null ? ` <span class="pool-tag">${fmt(x.m.time)}</span>` : '')}</div>`).join('')}
+        </section>` : ''}
+      ${koTeams && !me ? `
         <section class="card ko-section">
           <div class="card-head">
             <h2>Knock-out</h2>
@@ -1027,6 +1106,13 @@
 
     root.addEventListener('change', e => {
       const t = e.target;
+      if (t.id === 'playerPick') {
+        focusPlayer = t.value;
+        try { localStorage.setItem(FOCUS_KEY, focusPlayer); } catch (err) { /* geen opslag */ }
+        renderResults();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
       if (t.classList.contains('score') && t.closest('.match').dataset.kind === 'ko') {
         propagateKnockout();
         save();
@@ -1063,7 +1149,7 @@
   let standingsView = 'all';
   let beamerTimer = null;
 
-  // Bij beginners/gevorderden is er geen gezamenlijke ranglijst: elke poule is een eigen toernooi.
+  // Bij recreatief/ervaren is er geen gezamenlijke ranglijst: elke poule is een eigen toernooi.
   function standingsViews() {
     const s = state.schedule;
     const separate = s?.poolMode === 'level';
