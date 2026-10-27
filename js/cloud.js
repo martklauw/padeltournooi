@@ -11,6 +11,9 @@
 //
 // Beheerders staan onder /admins/{e-mail met punten als komma's} = {email, addedBy, at}.
 // Alleen beheerders (en de eigenaar uit de databaseregels) kunnen die lijst lezen en wijzigen.
+//
+// Logboek onder /log/{push-id} = {at, email, action, detail}. Tijd en e-mail worden door de
+// databaseregels gecontroleerd; regels kunnen alleen worden toegevoegd, niet gewijzigd.
 const Cloud = (() => {
   const firebaseConfig = {
     apiKey: 'AIzaSyBLeT-wnwCUv_jU4W7Uo0mI6bs040d_TOQ',
@@ -39,6 +42,9 @@ const Cloud = (() => {
   let adminsRef = null;
   let admins = null;
   let adminsError = null;
+  let logRef = null;
+  let logEntries = null;
+  let logError = null;
 
   const emailKey = email => String(email).trim().toLowerCase().replace(/\./g, ',');
 
@@ -70,11 +76,13 @@ const Cloud = (() => {
       user = u;
       editor = false;
       stopAdmins();
+      stopLog();
       if (u) {
         try {
           await root.child('lastLogin').set({ email: u.email, at: firebase.database.ServerValue.TIMESTAMP });
           editor = true;
           watchAdmins();
+          watchLog();
         } catch (e) {
           handlers.onDenied(u.email);
         }
@@ -101,6 +109,38 @@ const Cloud = (() => {
     adminsRef = null;
     admins = null;
     adminsError = null;
+  }
+
+  function watchLog() {
+    logRef = firebase.database().ref('log').limitToLast(300);
+    logRef.on('value', snap => {
+      const list = [];
+      snap.forEach(c => { list.push(c.val()); });
+      logEntries = list.reverse();
+      logError = null;
+      handlers.onLog();
+    }, err => {
+      logEntries = null;
+      logError = err;
+      handlers.onLog();
+    });
+  }
+
+  function stopLog() {
+    if (logRef) logRef.off();
+    logRef = null;
+    logEntries = null;
+    logError = null;
+  }
+
+  function log(action, detail) {
+    if (!root || !editor || !user?.email) return;
+    firebase.database().ref('log').push({
+      at: firebase.database.ServerValue.TIMESTAMP,
+      email: user.email.toLowerCase(),
+      action,
+      detail: String(detail || '').slice(0, 480),
+    }).catch(e => console.warn('Logboek bijwerken mislukt:', e.message));
   }
 
   function addAdmin(email) {
@@ -201,6 +241,9 @@ const Cloud = (() => {
     canEdit: () => editor,
     remoteEmpty: () => remoteEmpty,
     admins: () => admins,
+    log,
+    logEntries: () => logEntries,
+    logError: () => logError,
     adminsError: () => adminsError,
     addAdmin,
     removeAdmin,

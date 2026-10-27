@@ -364,6 +364,8 @@
     state.schedule = { createdAt: Date.now(), poolMode: cfg.poolMode, pools, rounds };
     if (!keepPlayed) state.knockout = null;
     save({ full: true });
+    logChange(keepPlayed ? 'Open rondes herpland' : 'Nieuw schema gemaakt',
+      keepPlayed ? `${kept.length} gespeelde ronde(s) behouden, ${rounds.length} rondes totaal` : `${rounds.length} rondes, ${players.filter(pl => pl.active !== false).length} spelers`);
     renderAll();
     showTab('results');
   }
@@ -412,6 +414,7 @@
       return;
     }
     state.knockout = { brackets };
+    logChange('Knock-out ingedeeld', brackets.map(b => `${b.name}: ${b.rounds[0].name.toLowerCase()} (${b.seeds.length} spelers)`).join(', '));
     assignKoCourts();
     save();
     renderAll();
@@ -685,7 +688,7 @@
           }[c.poolMode]}</p>
         </div>
 
-        ${Cloud.enabled && Cloud.canEdit() ? '<div class="card span-2" id="adminsCard"></div>' : ''}
+        ${Cloud.enabled && Cloud.canEdit() ? '<div class="card span-2" id="adminsCard"></div><div class="card span-2" id="logCard"></div>' : ''}
 
         <div class="card span-2 summary" id="planSummary"></div>
 
@@ -700,6 +703,40 @@
       </div>`;
     renderSummary();
     renderAdmins();
+    renderLog();
+  }
+
+  // Logboek: alleen zichtbaar voor beheerders (de databaseregels geven kijkers geen leestoegang).
+  let logFilter = '';
+
+  function renderLog() {
+    const el = $('#logCard');
+    if (!el) return;
+    const entries = Cloud.logEntries();
+    const when = at => {
+      const d = new Date(at);
+      return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')} ${fmt(d.getHours() * 60 + d.getMinutes())}`;
+    };
+    const shown = (entries || []).filter(e => !logFilter
+      || `${e.email} ${e.action} ${e.detail}`.toLowerCase().includes(logFilter.toLowerCase()));
+    const scrolled = $('.log-list', el)?.scrollTop || 0;
+    const hadFocus = document.activeElement?.id === 'logFilter';
+    el.innerHTML = `
+      <div class="card-head">
+        <h2>Logboek</h2>
+        <input type="search" id="logFilter" placeholder="Zoek op naam, beheerder of actie" value="${esc(logFilter)}">
+      </div>
+      <p class="muted">Wie wat heeft gewijzigd, nieuwste bovenaan. Alleen beheerders zien dit; regels kunnen niet worden aangepast of verwijderd.</p>
+      ${Cloud.logError() ? '<div class="alert warn">Het logboek is nog niet beschikbaar: de databaseregels in Firebase moeten eerst worden bijgewerkt.</div>' : ''}
+      ${entries ? `<ol class="log-list">${shown.length ? shown.map(e => `
+        <li>
+          <time>${when(e.at)}</time>
+          <span class="log-who" title="${esc(e.email)}">${esc(e.email.split('@')[0])}</span>
+          <span class="log-what"><b>${esc(e.action)}</b>${e.detail ? ` · ${esc(e.detail)}` : ''}</span>
+        </li>`).join('') : `<li class="muted">${entries.length ? 'Niets gevonden.' : 'Nog geen wijzigingen vastgelegd.'}</li>`}</ol>` : ''}`;
+    const list = $('.log-list', el);
+    if (list) list.scrollTop = scrolled;
+    if (hadFocus) { const f = $('#logFilter'); f.focus(); f.setSelectionRange(f.value.length, f.value.length); }
   }
 
   // Beheerders: Google-accounts die na inloggen alles mogen wijzigen.
@@ -741,7 +778,7 @@
       return;
     }
     Cloud.addAdmin(email)
-      .then(() => { input.value = ''; })
+      .then(() => { input.value = ''; logChange('Beheerder toegevoegd', email); })
       .catch(e => alert('Toevoegen is niet gelukt: ' + e.message));
   }
 
@@ -813,6 +850,57 @@
     }).map(p => ({ id: uid(), name: p.name, level: p.level, active: true }));
   }
 
+  // ---------- logboek ----------
+  // Wijzigingen van beheerders gaan naar het online logboek. Snel achter elkaar typen in
+  // hetzelfde veld of dezelfde wedstrijd wordt samengevoegd tot één regel.
+  const pendingLogs = new Map();
+
+  function logChange(action, detail = '') {
+    if (Cloud.enabled && Cloud.canEdit()) Cloud.log(action, detail);
+  }
+
+  function logLater(key, before, describe, delay = 2500) {
+    const p = pendingLogs.get(key) || { before };
+    clearTimeout(p.timer);
+    p.describe = describe;
+    p.timer = setTimeout(() => flushLog(key), delay);
+    pendingLogs.set(key, p);
+  }
+
+  function flushLog(key) {
+    const p = pendingLogs.get(key);
+    if (!p) return;
+    clearTimeout(p.timer);
+    pendingLogs.delete(key);
+    const entry = p.describe(p.before);
+    if (entry) logChange(entry.action, entry.detail);
+  }
+
+  const FIELD_LABELS = {
+    name: 'Toernooinaam', startTime: 'Banen vanaf', endTime: 'Banen tot', matchMinutes: 'Duur poulepotje',
+    changeMinutes: 'Wisseltijd', roundsOverride: 'Aantal poulerondes', poolMode: 'Poule-indeling',
+    unknownTo: '“Weet ik niet” speelt bij', poolCount: 'Aantal poules', levelMode: 'Indeling teams per ronde',
+    rankBy: 'Ranglijst op basis van', koType: 'Knock-outfase', koPairing: 'Teams vormen knock-out',
+    koMatchMinutes: 'Duur knock-outpotje',
+  };
+
+  // Leesbare omschrijving van een wedstrijd voor het logboek.
+  function matchLabel(m) {
+    const pm = playerMap();
+    const team = t => (t ? t.map(id => pname(id, pm)).join(' & ') : '?');
+    let where = '';
+    const ri = state.schedule?.rounds.findIndex(r => r.matches.includes(m));
+    if (ri >= 0) where = `Ronde ${ri + 1}`;
+    else {
+      state.knockout?.brackets.forEach(b => b.rounds.forEach(r => {
+        if (r.matches.includes(m)) where = `${r.name}${b.poolId ? ' ' + b.name.toLowerCase() : ''}`;
+      }));
+    }
+    return `${where}, ${courtName(m.courtId)}: ${team(m.teamA)} – ${team(m.teamB)}`;
+  }
+
+  const scoreText = m => (m.scoreA == null && m.scoreB == null ? '' : `${m.scoreA ?? '?'}–${m.scoreB ?? '?'}`);
+
   function setupConfigEvents() {
     const root = $('#tab-config');
 
@@ -820,30 +908,51 @@
       const t = e.target;
       const c = state.config;
       if (t.dataset.field) {
+        const field = t.dataset.field;
         let v = t.type === 'checkbox' ? t.checked : t.value;
         if ('num' in t.dataset) v = v === '' ? null : Number(v);
-        c[t.dataset.field] = v;
-        if (t.dataset.field === 'name') $('#brandName').textContent = v || 'Padel Toernooi';
+        const show = x => (t.tagName === 'SELECT' ? [...t.options].find(o => o.value === String(x))?.text ?? x : x ?? 'automatisch');
+        logLater('field:' + field, c[field], b => (c[field] === b ? null
+          : { action: 'Instelling gewijzigd', detail: `${FIELD_LABELS[field] || field}: ${show(b)} → ${show(c[field])}` }));
+        c[field] = v;
+        if (field === 'name') $('#brandName').textContent = v || 'Padel Toernooi';
       } else if (t.dataset.pf) {
         const p = c.players.find(x => x.id === t.closest('tr').dataset.pid);
         if (!p) return;
         if (t.dataset.pf === 'level') {
+          logLater('level:' + p.id, p.level, b => (p.level === b ? null
+            : { action: 'Niveau gewijzigd', detail: `${p.name}: ${levelInfo(b).label} → ${levelInfo(p.level).label}` }));
           p.level = +t.value;
           $$('label', t.closest('.seg')).forEach(lb => lb.classList.toggle('on', lb.contains(t)));
         } else if (t.dataset.pf === 'active') {
+          logLater('active:' + p.id, p.active !== false, b => ((p.active !== false) === b ? null
+            : { action: 'Aanwezigheid gewijzigd', detail: `${p.name}: ${p.active !== false ? 'aanwezig' : 'afwezig'}` }));
           p.active = t.checked;
           t.closest('tr').classList.toggle('inactive', !t.checked);
         } else {
+          logLater('name:' + p.id, p.name, b => (p.name === b ? null
+            : { action: 'Speler hernoemd', detail: `${b} → ${p.name}` }));
           p.name = t.value;
         }
       } else if (t.dataset.cf) {
         const ct = c.courts.find(x => x.id === t.closest('[data-cid]').dataset.cid);
-        if (ct) ct.name = t.value;
+        if (ct) {
+          logLater('court:' + ct.id, ct.name, b => (ct.name === b ? null
+            : { action: 'Baan hernoemd', detail: `${b} → ${ct.name}` }));
+          ct.name = t.value;
+        }
       } else {
         return;
       }
       save();
       renderSummary();
+    });
+
+    root.addEventListener('input', e => {
+      if (e.target.id === 'logFilter') {
+        logFilter = e.target.value;
+        renderLog();
+      }
     });
 
     root.addEventListener('keydown', e => {
@@ -871,6 +980,7 @@
         }).catch(err => alert('Dit bestand kon niet worden gelezen: ' + err.message));
       } else if (t.id === 'courtCount') {
         const n = Math.max(1, Math.min(30, +t.value || 1));
+        if (n !== c.courts.length) logChange('Aantal banen gewijzigd', `${c.courts.length} → ${n}`);
         while (c.courts.length < n) c.courts.push({ id: uid(), name: `Baan ${c.courts.length + 1}` });
         c.courts.length = n;
         save();
@@ -895,7 +1005,9 @@
         if (!confirm(self
           ? `Je verwijdert jezelf als beheerder (${email}). Daarna kun je niets meer wijzigen, tenzij je de eigenaar bent. Doorgaan?`
           : `${email} verwijderen als beheerder?`)) return;
-        Cloud.removeAdmin(key).catch(e => alert('Verwijderen is niet gelukt: ' + e.message));
+        Cloud.removeAdmin(key)
+          .then(() => logChange('Beheerder verwijderd', email))
+          .catch(e => alert('Verwijderen is niet gelukt: ' + e.message));
         return;
       } else if (a.startsWith('file-')) {
         $({ 'file-export': '#btnExport', 'file-import': '#btnImport', 'file-reset': '#btnReset' }[a]).click();
@@ -909,26 +1021,32 @@
         if (a === 'import-replace') {
           if (c.players.length && !confirm(`De huidige ${c.players.length} spelers vervangen door ${list.length} deelnemers uit het bestand?`)) return;
           c.players = list;
+          logChange('Deelnemers geüpload', `Spelerslijst vervangen door ${list.length} deelnemers`);
         } else if (a === 'import-append') {
           const have = new Set(c.players.map(p => p.name.trim().toLowerCase()));
           const fresh = list.filter(p => !have.has(p.name.toLowerCase()));
           if (fresh.length < list.length) alert(`${list.length - fresh.length} deelnemer(s) stonden al in de lijst en zijn overgeslagen.`);
           c.players = c.players.concat(fresh);
+          logChange('Deelnemers geüpload', `${fresh.length} deelnemers toegevoegd`);
         }
       } else if (a === 'add-player') {
         c.players.push({ id: uid(), name: `Speler ${c.players.length + 1}`, level: 5, active: true });
+        logChange('Speler toegevoegd', c.players[c.players.length - 1].name);
       } else if (a === 'del-player') {
         const id = btn.closest('tr').dataset.pid;
+        logChange('Speler verwijderd', c.players.find(p => p.id === id)?.name || '');
         c.players = c.players.filter(p => p.id !== id);
       } else if (a === 'apply-count') {
         const n = Math.max(0, Math.min(80, +$('#playerCount').value || 0));
         if (n < c.players.length && !confirm(`De laatste ${c.players.length - n} speler(s) verwijderen?`)) return;
+        if (n !== c.players.length) logChange('Aantal spelers gewijzigd', `${c.players.length} → ${n}`);
         while (c.players.length < n) c.players.push({ id: uid(), name: `Speler ${c.players.length + 1}`, level: 5, active: true });
         c.players.length = n;
       } else if (a === 'bulk-replace' || a === 'bulk-append') {
         const list = parseBulk($('#bulkPlayers').value);
         if (!list.length) return;
         c.players = a === 'bulk-replace' ? list : c.players.concat(list);
+        logChange('Spelerslijst geplakt', `${list.length} spelers ${a === 'bulk-replace' ? '(lijst vervangen)' : 'toegevoegd'}`);
       } else if (a === 'generate') {
         generateSchedule(false);
         return;
@@ -1149,6 +1267,11 @@
       const { m, ri } = findMatch(box.dataset.mid, box.dataset.kind);
       if (!m) return;
       const v = t.value === '' ? null : Math.max(0, Math.min(99, Math.round(+t.value)));
+      logLater('score:' + m.id, scoreText(m), b => {
+        const now = scoreText(m);
+        if (now === b) return null;
+        return { action: b ? 'Uitslag gewijzigd' : 'Uitslag ingevoerd', detail: `${matchLabel(m)}: ${now || 'gewist'}${b ? ` (was ${b})` : ''}` };
+      });
       m['score' + t.dataset.side] = Number.isFinite(v) ? v : null;
       save({ score: m });
       // Licht bijwerken zodat de focus in het invoerveld blijft.
@@ -1502,6 +1625,7 @@
         s.config = { ...defaultState().config, ...s.config };
         state = normalize(s);
         save({ full: true });
+        logChange('Toernooi geïmporteerd', 'Uit een exportbestand');
         renderAll();
       } catch (err) {
         alert('Dit bestand kon niet worden geladen: ' + err.message);
@@ -1533,6 +1657,7 @@
       state = load(LOCAL_KEY);
     }
     save({ full: true });
+    logChange('Toernooi online gezet', state.schedule ? 'Met schema en uitslagen uit deze browser' : 'Nieuw toernooi');
     renderAll();
   }
 
@@ -1581,6 +1706,7 @@
       if (!confirm('Alles wissen en opnieuw beginnen? Exporteer eerst als je het toernooi wilt bewaren.')) return;
       state = defaultState();
       save({ full: true });
+      logChange('Toernooi gewist', 'Reset naar een leeg toernooi');
       renderAll();
       showTab('config');
     });
@@ -1590,6 +1716,11 @@
       if (e.key !== STORE_KEY || Cloud.enabled) return;
       state = load();
       refresh();
+    });
+
+    // Nog niet weggeschreven logregels meteen opslaan als de pagina wordt verlaten.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') [...pendingLogs.keys()].forEach(flushLog);
     });
 
     // Kopbalk verbergen bij naar beneden scrollen, terug bij omhoog scrollen.
@@ -1625,6 +1756,9 @@
       },
       onAdmins() {
         renderAdmins();
+      },
+      onLog() {
+        renderLog();
       },
       onDenied(email) {
         alert(`Je bent ingelogd als ${email}, maar dit account mag het toernooi niet wijzigen. Je kunt wel meekijken.`);

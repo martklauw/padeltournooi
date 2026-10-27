@@ -539,3 +539,16 @@ body.viewer .score { background: #fff; color: var(--navy); opacity: 1; }
 .admins li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: var(--t-blue); margin-bottom: 6px; font-weight: 700; overflow-wrap: anywhere; }
 .add-admin input { flex: 1; min-width: 200px; }
 .small-note { font-size: .8rem; margin-bottom: 0; }
+
+/* ---------- logboek ---------- */
+#logCard input[type=search] { max-width: 300px; font: inherit; border: 1.5px solid var(--line); border-radius: 10px; padding: 7px 10px; }
+.log-list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 420px; overflow: auto; border-radius: 12px; background: var(--t-blue); }
+.log-list li { display: grid; grid-template-columns: 92px 110px minmax(0, 1fr); gap: 10px; padding: 8px 12px; border-bottom: 1px solid #fff; font-size: .88rem; }
+.log-list time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.log-who { font-weight: 700; color: var(--pink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-what { overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .log-list li { grid-template-columns: auto minmax(0, 1fr); }
+  .log-what { grid-column: 1 / -1; }
+  #logCard input[type=search] { max-width: none; width: 100%; }
+}

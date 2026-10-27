@@ -7,6 +7,13 @@
         ".validate": "newData.child('email').isString() && newData.child('email').val().toLowerCase().replace('.', ',') == $key"
       }
     },
+    "log": {
+      ".read": "auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'eigenaar@gmail.com' || root.child('admins').child(auth.token.email.toLowerCase().replace('.', ',')).exists())",
+      "$id": {
+        ".write": "!data.exists() && auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'eigenaar@gmail.com' || root.child('admins').child(auth.token.email.toLowerCase().replace('.', ',')).exists())",
+        ".validate": "newData.hasChildren(['at', 'email', 'action']) && newData.child('at').val() == now && newData.child('email').val() == auth.token.email.toLowerCase() && newData.child('action').isString() && newData.child('action').val().length <= 100 && (!newData.child('detail').exists() || (newData.child('detail').isString() && newData.child('detail').val().length <= 500))"
+      }
+    },
     "tournament": {
       ".read": true,
       ".write": "auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'eigenaar@gmail.com' || root.child('admins').child(auth.token.email.toLowerCase().replace('.', ',')).exists())"
