@@ -75,7 +75,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 24px; }
 .icon-btn { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: 4px 8px; border-radius: 8px; }
 .icon-btn:hover { background: var(--t-pink); color: var(--pink); }
 
-input[type=text], input[type=number], input[type=time], select, textarea {
+input[type=text], input[type=email], input[type=number], input[type=time], select, textarea {
   font: inherit; color: inherit; background: #fff;
   border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; width: 100%;
 }
@@ -533,3 +533,9 @@ body.viewer .score { background: #fff; color: var(--navy); opacity: 1; }
 .team .pn.me { background: var(--t-yellow); border-radius: 8px; padding: 1px 6px; margin: -1px -6px; }
 .rest-round { border-top-color: var(--t-orange); }
 .rest-card { padding: 10px 14px; border-radius: 12px; background: var(--t-blue); font-weight: 700; color: var(--muted); }
+
+/* ---------- beheerders ---------- */
+.admins { list-style: none; padding: 0; margin: 8px 0 12px; }
+.admins li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; background: var(--t-blue); margin-bottom: 6px; font-weight: 700; overflow-wrap: anywhere; }
+.add-admin input { flex: 1; min-width: 200px; }
+.small-note { font-size: .8rem; margin-bottom: 0; }

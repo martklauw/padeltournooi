@@ -8,6 +8,9 @@
 //   scores  – per wedstrijd-id {a, b}; leidend boven de scores in data, zodat meerdere
 //             organisatoren tegelijk uitslagen kunnen invoeren
 //   lastLogin – wordt geschreven bij inloggen om te testen of iemand schrijfrechten heeft
+//
+// Beheerders staan onder /admins/{e-mail met punten als komma's} = {email, addedBy, at}.
+// Alleen beheerders (en de eigenaar uit de databaseregels) kunnen die lijst lezen en wijzigen.
 const Cloud = (() => {
   const firebaseConfig = {
     apiKey: 'AIzaSyBLeT-wnwCUv_jU4W7Uo0mI6bs040d_TOQ',
@@ -33,6 +36,11 @@ const Cloud = (() => {
   let timer = null;
   let remoteEmpty = false;
   let handlers = {};
+  let adminsRef = null;
+  let admins = null;
+  let adminsError = null;
+
+  const emailKey = email => String(email).trim().toLowerCase().replace(/\./g, ',');
 
   const newRev = () => Math.random().toString(36).slice(2, 12);
 
@@ -61,16 +69,49 @@ const Cloud = (() => {
     auth.onAuthStateChanged(async u => {
       user = u;
       editor = false;
+      stopAdmins();
       if (u) {
         try {
           await root.child('lastLogin').set({ email: u.email, at: firebase.database.ServerValue.TIMESTAMP });
           editor = true;
+          watchAdmins();
         } catch (e) {
           handlers.onDenied(u.email);
         }
       }
       handlers.onAuth();
     });
+  }
+
+  function watchAdmins() {
+    adminsRef = firebase.database().ref('admins');
+    adminsRef.on('value', snap => {
+      admins = snap.val() || {};
+      adminsError = null;
+      handlers.onAdmins();
+    }, err => {
+      admins = null;
+      adminsError = err;
+      handlers.onAdmins();
+    });
+  }
+
+  function stopAdmins() {
+    if (adminsRef) adminsRef.off();
+    adminsRef = null;
+    admins = null;
+    adminsError = null;
+  }
+
+  function addAdmin(email) {
+    email = String(email).trim().toLowerCase();
+    return firebase.database().ref('admins/' + emailKey(email)).set({
+      email, addedBy: user?.email || null, at: firebase.database.ServerValue.TIMESTAMP,
+    });
+  }
+
+  function removeAdmin(key) {
+    return firebase.database().ref('admins/' + key).remove();
   }
 
   function signIn() {
@@ -159,5 +200,10 @@ const Cloud = (() => {
     user: () => user,
     canEdit: () => editor,
     remoteEmpty: () => remoteEmpty,
+    admins: () => admins,
+    adminsError: () => adminsError,
+    addAdmin,
+    removeAdmin,
+    emailKey,
   };
 })();

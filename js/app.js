@@ -685,6 +685,8 @@
           }[c.poolMode]}</p>
         </div>
 
+        ${Cloud.enabled && Cloud.canEdit() ? '<div class="card span-2" id="adminsCard"></div>' : ''}
+
         <div class="card span-2 summary" id="planSummary"></div>
 
         <div class="card span-2 mobile-only file-actions">
@@ -697,6 +699,50 @@
         </div>
       </div>`;
     renderSummary();
+    renderAdmins();
+  }
+
+  // Beheerders: Google-accounts die na inloggen alles mogen wijzigen.
+  function renderAdmins() {
+    const el = $('#adminsCard');
+    if (!el) return;
+    const me = Cloud.user()?.email?.toLowerCase();
+    const list = Object.entries(Cloud.admins() || {}).sort((a, b) => a[1].email.localeCompare(b[1].email));
+    const typed = $('#newAdmin')?.value || '';
+    el.innerHTML = `
+      <h2>Beheerders</h2>
+      <p class="muted">Beheerders loggen in met Google en kunnen daarna het toernooi instellen en uitslagen invoeren. Vul het Gmail-adres in (of een ander adres waarmee iemand een Google-account heeft).</p>
+      ${Cloud.adminsError() ? '<div class="alert warn">De beheerderslijst is nog niet beschikbaar: de databaseregels in Firebase moeten eerst worden bijgewerkt.</div>' : ''}
+      ${Cloud.admins() ? `
+        <ul class="admins">
+          ${list.length ? list.map(([key, a]) => `
+            <li>
+              <span>${esc(a.email)}${a.email === me ? ' <span class="pill">jij</span>' : ''}</span>
+              <button class="icon-btn" data-action="remove-admin" data-key="${esc(key)}" title="Verwijder als beheerder">✕</button>
+            </li>`).join('') : '<li class="muted">Nog geen extra beheerders.</li>'}
+        </ul>
+        <div class="inline add-admin">
+          <input type="email" id="newAdmin" placeholder="naam@gmail.com" autocomplete="off" value="${esc(typed)}">
+          <button class="btn primary" data-action="add-admin">Toevoegen</button>
+        </div>
+        <p class="muted small-note">De eigenaar staat vast in de databaseregels en heeft altijd toegang, ook zonder vermelding in deze lijst.</p>` : ''}`;
+  }
+
+  function addAdminFromInput() {
+    const input = $('#newAdmin');
+    const email = input.value.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      alert('Vul een geldig e-mailadres in, bijvoorbeeld naam@gmail.com.');
+      input.focus();
+      return;
+    }
+    if (Cloud.admins()?.[Cloud.emailKey(email)]) {
+      alert(`${email} is al beheerder.`);
+      return;
+    }
+    Cloud.addAdmin(email)
+      .then(() => { input.value = ''; })
+      .catch(e => alert('Toevoegen is niet gelukt: ' + e.message));
   }
 
   function renderSummary() {
@@ -800,6 +846,13 @@
       renderSummary();
     });
 
+    root.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && e.target.id === 'newAdmin') {
+        e.preventDefault();
+        addAdminFromInput();
+      }
+    });
+
     root.addEventListener('change', e => {
       const t = e.target;
       const c = state.config;
@@ -832,7 +885,19 @@
       if (!btn) return;
       const c = state.config;
       const a = btn.dataset.action;
-      if (a.startsWith('file-')) {
+      if (a === 'add-admin') {
+        addAdminFromInput();
+        return;
+      } else if (a === 'remove-admin') {
+        const key = btn.dataset.key;
+        const email = Cloud.admins()?.[key]?.email || key;
+        const self = email === Cloud.user()?.email?.toLowerCase();
+        if (!confirm(self
+          ? `Je verwijdert jezelf als beheerder (${email}). Daarna kun je niets meer wijzigen, tenzij je de eigenaar bent. Doorgaan?`
+          : `${email} verwijderen als beheerder?`)) return;
+        Cloud.removeAdmin(key).catch(e => alert('Verwijderen is niet gelukt: ' + e.message));
+        return;
+      } else if (a.startsWith('file-')) {
         $({ 'file-export': '#btnExport', 'file-import': '#btnImport', 'file-reset': '#btnReset' }[a]).click();
         return;
       } else if (a === 'upload-players') {
@@ -1557,6 +1622,9 @@
         renderAll();
         showTab(document.body.dataset.tab);
         if (Cloud.canEdit() && Cloud.remoteEmpty()) offerUpload();
+      },
+      onAdmins() {
+        renderAdmins();
       },
       onDenied(email) {
         alert(`Je bent ingelogd als ${email}, maar dit account mag het toernooi niet wijzigen. Je kunt wel meekijken.`);
