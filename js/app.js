@@ -741,7 +741,7 @@
           }[c.poolMode]}</p>
         </div>
 
-        ${Cloud.enabled && Cloud.canEdit() ? '<div class="card span-2" id="adminsCard"></div><div class="card span-2" id="logCard"></div>' : ''}
+        ${Cloud.enabled && Cloud.canEdit() ? '<div class="card span-2" id="adminsCard"></div>' : ''}
 
         <div class="card span-2 summary" id="planSummary"></div>
 
@@ -753,6 +753,8 @@
             <button class="btn danger" data-action="file-reset">Reset</button>
           </div>
         </div>
+
+        ${Cloud.enabled && Cloud.canEdit() ? '<div class="card span-2" id="logCard"></div>' : ''}
       </div>`;
     renderSummary();
     renderAdmins();
