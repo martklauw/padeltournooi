@@ -560,3 +560,10 @@ body.viewer .score { background: #fff; color: var(--navy); opacity: 1; }
 .fair-toggle input { position: absolute; opacity: 0; pointer-events: none; }
 .fair-toggle label:focus-within { outline: 2px solid var(--t-pink); outline-offset: 2px; }
 .summary .alert.warn { background: var(--t-yellow); }
+
+/* ---------- exporteer-menu ---------- */
+.export-wrap { position: relative; }
+.export-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 220px; padding: 6px; border-radius: 12px; background: #fff; box-shadow: 0 8px 28px rgba(47, 51, 91, .18); }
+.export-menu[hidden] { display: none; }
+.export-menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 9px 12px; border-radius: 8px; font: inherit; font-weight: 700; color: var(--navy); cursor: pointer; }
+.export-menu button:hover { background: var(--t-blue); }

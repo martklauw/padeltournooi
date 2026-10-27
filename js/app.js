@@ -748,7 +748,8 @@
         <div class="card span-2 mobile-only file-actions">
           <h2>Bestand</h2>
           <div class="inline">
-            <button class="btn" data-action="file-export">Exporteer</button>
+            <button class="btn" data-action="file-pdf">📄 Stand als PDF</button>
+            <button class="btn" data-action="file-export">Exporteer bestand</button>
             <button class="btn" data-action="file-import">Importeer</button>
             <button class="btn danger" data-action="file-reset">Reset</button>
           </div>
@@ -1072,8 +1073,14 @@
           .then(() => logChange('Beheerder verwijderd', email))
           .catch(e => alert('Verwijderen is niet gelukt: ' + e.message));
         return;
+      } else if (a === 'file-pdf') {
+        exportStandingsPdf();
+        return;
+      } else if (a === 'file-export') {
+        exportData();
+        return;
       } else if (a.startsWith('file-')) {
-        $({ 'file-export': '#btnExport', 'file-import': '#btnImport', 'file-reset': '#btnReset' }[a]).click();
+        $({ 'file-import': '#btnImport', 'file-reset': '#btnReset' }[a]).click();
         return;
       } else if (a === 'upload-players') {
         $('#playersFile').click();
@@ -1525,7 +1532,7 @@
             ${recentHtml(pm, separate ? view.id : null)}
           </aside>
         </div>
-        ${BEAMER ? '' : '<div class="arena-actions"><button class="btn glow" data-action="confetti">🎉 Feest!</button><a class="btn glow" href="?beamer#standings" target="_blank">📺 Beamerweergave</a></div>'}
+        ${BEAMER ? '' : '<div class="arena-actions"><button class="btn glow" data-action="confetti">🎉 Feest!</button><button class="btn glow" data-action="pdf">📄 Stand als PDF</button><a class="btn glow" href="?beamer#standings" target="_blank">📺 Beamerweergave</a></div>'}
       </div></div>`;
   }
 
@@ -1665,6 +1672,7 @@
       }
       const btn = e.target.closest('[data-action="confetti"]');
       if (btn) confetti();
+      if (e.target.closest('[data-action="pdf"]')) exportStandingsPdf();
     });
   }
 
@@ -1677,6 +1685,196 @@
     a.download = (state.config.name || 'toernooi').replace(/[^\w-]+/g, '_') + '.json';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // Stand als A4-document in BOOR-huisstijl. Het opent in een nieuw venster met de afdrukweergave
+  // van de browser; daar kies je "Opslaan als PDF".
+  function exportStandingsPdf() {
+    const s = state.schedule;
+    if (!s) {
+      alert('Er is nog geen schema, dus ook nog geen stand om te exporteren.');
+      return;
+    }
+    const cfg = state.config;
+    const pm = playerMap();
+    const separate = s.poolMode === 'level';
+    const views = separate ? standingsViews() : [standingsViews()[0]];
+    const all = s.rounds.flatMap(r => r.matches);
+    const done = all.filter(hasScore).length;
+    const brackets = state.knockout?.brackets || [];
+    const poolDone = all.length > 0 && done === all.length;
+    const finished = poolDone && (KO_TEAMS[cfg.koType] ? brackets.length > 0 && brackets.every(b => bracketChampion(b)) : true);
+    const title = finished ? 'Eindstand' : 'Tussenstand';
+    const byAvg = cfg.rankBy === 'avg';
+    const team = t => (t ? t.map(id => esc(pname(id, pm))).join(' &amp; ') : '–');
+    const today = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+    const abs = path => new URL(path, location.href).href;
+    const players = scheduledPlayerIds().length;
+
+    const podium = rows => {
+      const top = rows.slice(0, 3).filter(r => r.played);
+      return top.length ? `<div class="podium">${[1, 0, 2].filter(i => top[i]).map(i => `
+        <div class="step s${i + 1}">
+          <div class="pname">${i === 0 ? '👑 ' : ''}${esc(top[i].name)}</div>
+          <div class="pval">${byAvg ? top[i].avg.toFixed(2) : top[i].gf}<small> ${byAvg ? 'gem.' : 'games'}</small></div>
+          <div class="block">${i + 1}</div>
+        </div>`).join('')}</div>` : '';
+    };
+
+    const table = rows => `
+      <table>
+        <thead><tr><th>#</th><th class="l">Speler</th><th>Niveau</th><th>Gespeeld</th><th>Gewonnen</th>
+          <th class="${byAvg ? '' : 'hl'}">Games</th><th>Tegen</th><th>Saldo</th><th class="${byAvg ? 'hl' : ''}">Gem.</th></tr></thead>
+        <tbody>${rows.map((r, i) => `
+          <tr class="${i < 3 && r.played ? 'top t' + (i + 1) : ''}">
+            <td class="pos">${i + 1}</td><td class="l">${esc(r.name)}</td><td>${levelInfo(r.level).label}</td>
+            <td>${r.played}</td><td>${r.wins}</td><td class="${byAvg ? '' : 'hl'}">${r.gf}</td><td>${r.ga}</td>
+            <td>${r.diff > 0 ? '+' : ''}${r.diff}</td><td class="${byAvg ? 'hl' : ''}">${r.avg.toFixed(1)}</td>
+          </tr>`).join('')}</tbody>
+      </table>`;
+
+    const koHtml = list => (list.length ? `
+      <h3>Knock-out</h3>
+      ${list.map(b => b.rounds.map(r => `
+        <div class="ko-round"><b>${esc(r.name)}</b>
+          ${r.matches.map(m => {
+            const w = koWinner(m);
+            return `<div class="ko-match"><span class="${w && w === m.teamA ? 'win' : ''}">${team(m.teamA)}</span>
+              <em>${hasScore(m) ? `${m.scoreA}–${m.scoreB}` : 'nog te spelen'}</em>
+              <span class="${w && w === m.teamB ? 'win' : ''}">${team(m.teamB)}</span></div>`;
+          }).join('')}
+        </div>`).join('')).join('')}` : '');
+
+    const sections = views.map((view, i) => {
+      const rows = computeStandings(view.ids);
+      const vb = separate ? brackets.filter(b => b.poolId === view.id) : brackets;
+      const champs = vb.map(b => ({ w: bracketChampion(b), final: b.rounds[b.rounds.length - 1].matches[0] })).filter(x => x.w);
+      return `
+        <section class="${i ? 'new-page' : ''}">
+          <h2>${esc(separate ? view.name : 'Ranglijst')}</h2>
+          ${champs.map(({ w, final }) => `
+            <div class="champ"><div class="trophy">🏆</div><div>
+              <small>Winnaars knock-out</small><b>${team(w)}</b>
+              <span>Finale: ${team(final.teamA)} – ${team(final.teamB)} · ${final.scoreA}–${final.scoreB}</span>
+            </div></div>`).join('')}
+          ${podium(rows)}
+          ${table(rows)}
+          ${koHtml(vb)}
+        </section>`;
+    }).join('');
+
+    const docTitle = `${title} ${cfg.name || 'Padel Toernooi'}`;
+    const html = `<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(docTitle)}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amaranth:wght@400;700&display=swap">
+<style>
+  @page { size: A4; margin: 12mm 12mm 14mm; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: #2f335b; font-size: 10.5pt; background: #fff; }
+  .page { max-width: 186mm; margin: 0 auto; padding: 8mm 0; }
+  h1, h2, h3, .pname, .pval, .block { font-family: "Bree", "Amaranth", "Helvetica Neue", Arial, sans-serif; }
+  .band { position: relative; overflow: hidden; background: #2f335b; color: #fff; border-radius: 6mm 6mm 0 0; padding: 7mm 8mm 9mm; }
+  .band::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 5mm; background: #fff; clip-path: polygon(0 100%, 50% 0, 100% 100%); }
+  .band img { height: 11mm; display: block; margin-bottom: 4mm; }
+  .band .eyebrow { color: #e9bfd1; font-weight: 700; font-size: 10pt; }
+  .band h1 { margin: 1mm 0 1.5mm; font-size: 26pt; line-height: 1.05; }
+  .band .meta { color: #d7d9ea; font-size: 9pt; }
+  .stripes { position: absolute; top: -4mm; right: 4mm; width: 58mm; height: 40mm; }
+  .stripes rect { fill: #e9bfd1; }
+  h2 { font-size: 18pt; color: #0090ad; margin: 7mm 0 3mm; padding-bottom: 1.5mm; border-bottom: 1.2mm solid #e9bfd1; }
+  h3 { font-size: 13pt; margin: 6mm 0 2mm; }
+  .new-page { break-before: page; page-break-before: always; }
+  .champ { display: flex; gap: 4mm; align-items: center; background: #f0e67b; border-radius: 4mm; padding: 3.5mm 5mm; margin-bottom: 4mm; break-inside: avoid; }
+  .champ .trophy { font-size: 22pt; }
+  .champ small { display: block; font-weight: 700; font-size: 8pt; text-transform: uppercase; letter-spacing: .05em; }
+  .champ b { display: block; font-family: "Bree", "Amaranth", Arial, sans-serif; font-size: 16pt; }
+  .champ span { font-size: 9pt; }
+  .podium { display: flex; justify-content: center; align-items: flex-end; gap: 3mm; margin: 3mm 0 5mm; break-inside: avoid; }
+  .step { width: 48mm; text-align: center; }
+  .pname { font-size: 12pt; font-weight: 700; }
+  .pval { font-size: 13pt; color: #c70a64; font-weight: 700; }
+  .pval small { font-family: Arial, sans-serif; font-size: 8pt; color: #6b6f8e; font-weight: 400; }
+  .block { margin-top: 1.5mm; border-radius: 3mm 3mm 0 0; display: flex; align-items: center; justify-content: center; font-size: 18pt; font-weight: 700; }
+  .s1 .block { height: 22mm; background: #e9bfd1; }
+  .s2 .block { height: 16mm; background: #ecf5f7; }
+  .s3 .block { height: 12mm; background: #fac075; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th { background: #2f335b; color: #fff; font-size: 8.5pt; padding: 2mm 1.5mm; text-align: center; }
+  th:first-child { border-radius: 2mm 0 0 0; } th:last-child { border-radius: 0 2mm 0 0; }
+  td { padding: 1.6mm 1.5mm; text-align: center; border-bottom: .3mm solid #d9e6ea; }
+  .l { text-align: left; }
+  td.pos { font-weight: 700; width: 9mm; }
+  td.hl, th.hl { font-weight: 700; }
+  td.hl { color: #c70a64; }
+  tr:nth-child(even) td { background: #ecf5f7; }
+  tr.t1 td { background: #e9bfd1; } tr.t2 td { background: #f3f7f9; } tr.t3 td { background: #fde7c8; }
+  tr { break-inside: avoid; }
+  .ko-round { margin-bottom: 2.5mm; break-inside: avoid; }
+  .ko-round > b { display: block; color: #0090ad; font-size: 9.5pt; margin-bottom: 1mm; }
+  .ko-match { display: grid; grid-template-columns: 1fr auto 1fr; gap: 3mm; padding: 1.5mm 3mm; background: #ecf5f7; border-radius: 2mm; margin-bottom: 1mm; }
+  .ko-match span:last-child { text-align: right; }
+  .ko-match em { font-style: normal; font-weight: 700; }
+  .ko-match .win { font-weight: 700; color: #c70a64; }
+  footer { margin-top: 8mm; font-size: 8pt; color: #6b6f8e; text-align: center; }
+  .toolbar { position: sticky; top: 0; display: flex; gap: 8px; justify-content: center; padding: 10px; background: #ecf5f7; font-family: Arial, sans-serif; }
+  .toolbar button { font: inherit; font-weight: 700; padding: 8px 16px; border-radius: 10px; border: 1.5px solid #2f335b; background: #2f335b; color: #fff; cursor: pointer; }
+  .toolbar button.ghost { background: #fff; color: #2f335b; }
+  @media print { .toolbar { display: none; } .page { padding: 0; } }
+</style></head>
+<body>
+  <div class="toolbar"><button onclick="window.print()">📄 Opslaan als PDF / afdrukken</button><button class="ghost" onclick="window.close()">Sluiten</button></div>
+  <div class="page">
+    <header class="band">
+      ${STRIPES}
+      <img src="${abs('img/boor-logo-wit.png')}" alt="BOOR – kwaliteit in onderwijs">
+      <div class="eyebrow">${title} · ${today}</div>
+      <h1>${esc(cfg.name || 'Padel Toernooi')}</h1>
+      <div class="meta">${players} spelers · ${done} van ${all.length} poulepotjes gespeeld · ranglijst op ${byAvg ? 'gemiddeld gewonnen games per potje' : 'totaal gewonnen games'}${finished ? '' : ' · nog niet alle wedstrijden gespeeld'}</div>
+    </header>
+    ${sections}
+    <footer>${esc(cfg.name || 'Padel Toernooi')} · ${title.toLowerCase()} van ${today}</footer>
+  </div>
+</body></html>`;
+
+    printDocument(html, docTitle);
+  }
+
+  // Toon een HTML-document in een nieuw venster en open de afdrukweergave. Blokkeert de browser
+  // nieuwe vensters, dan wordt vanuit een onzichtbaar frame op deze pagina afgedrukt.
+  function printDocument(html, docTitle) {
+    let win = window.open('', '_blank');
+    let frame = null;
+    if (!win) {
+      frame = document.createElement('iframe');
+      frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+      document.body.appendChild(frame);
+      win = frame.contentWindow;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    // Pas afdrukken als logo en lettertype geladen zijn.
+    const doc = win.document;
+    const imgs = [...doc.images].map(img => (img.complete ? null : new Promise(r => { img.onload = img.onerror = r; })));
+    const fontCss = doc.querySelector('link[rel="stylesheet"]');
+    const fonts = new Promise(r => {
+      const done = () => (doc.fonts ? doc.fonts.load('700 16px Amaranth').then(() => doc.fonts.ready).then(r, r) : r());
+      if (!fontCss || fontCss.sheet) done();
+      else { fontCss.onload = done; fontCss.onerror = r; }
+      setTimeout(r, 3000);
+    });
+    Promise.all([...imgs, fonts, new Promise(r => setTimeout(r, 400))]).then(() => {
+      // De bestandsnaam van de PDF komt uit de paginatitel.
+      const oldTitle = document.title;
+      if (frame) document.title = docTitle;
+      win.focus();
+      win.print();
+      if (frame) {
+        document.title = oldTitle;
+        setTimeout(() => frame.remove(), 60000);
+      }
+    });
   }
 
   function importData(file) {
@@ -1759,7 +1957,22 @@
       const g = e.target.closest('[data-goto]');
       if (g) showTab(g.dataset.goto);
     });
-    $('#btnExport').addEventListener('click', exportData);
+    // Exporteer: keuze tussen een PDF van de stand en het toernooibestand.
+    const exportMenu = $('#exportMenu');
+    $('#btnExport').addEventListener('click', e => {
+      e.stopPropagation();
+      exportMenu.hidden = !exportMenu.hidden;
+    });
+    exportMenu.addEventListener('click', e => {
+      const b = e.target.closest('[data-export]');
+      if (!b) return;
+      exportMenu.hidden = true;
+      if (b.dataset.export === 'pdf') exportStandingsPdf();
+      else exportData();
+    });
+    document.addEventListener('click', e => {
+      if (!exportMenu.hidden && !e.target.closest('.export-wrap')) exportMenu.hidden = true;
+    });
     $('#btnImport').addEventListener('click', () => $('#fileImport').click());
     $('#fileImport').addEventListener('change', e => {
       if (e.target.files[0]) importData(e.target.files[0]);

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amaranth:ital,wght@0,400;0,700;1,400&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=13">
+  <link rel="stylesheet" href="css/style.css?v=14">
 </head>
 <body>
   <header class="topbar">
@@ -19,7 +19,13 @@
     </nav>
     <div class="cloud" id="cloudBar"></div>
     <div class="top-actions">
-      <button class="btn ghost small" id="btnExport" title="Toernooi opslaan als bestand">Exporteer</button>
+      <div class="export-wrap">
+        <button class="btn ghost small" id="btnExport" aria-haspopup="true">Exporteer ▾</button>
+        <div class="export-menu" id="exportMenu" hidden>
+          <button data-export="pdf">📄 Eindstand als PDF</button>
+          <button data-export="json">💾 Toernooibestand (JSON)</button>
+        </div>
+      </div>
       <button class="btn ghost small" id="btnImport" title="Toernooi laden uit bestand">Importeer</button>
       <button class="btn ghost small danger" id="btnReset" title="Alles wissen">Reset</button>
       <input type="file" id="fileImport" accept="application/json,.json" hidden>
@@ -35,9 +41,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-  <script src="js/cloud.js?v=13"></script>
-  <script src="js/importer.js?v=13"></script>
-  <script src="js/scheduler.js?v=13"></script>
-  <script src="js/app.js?v=13"></script>
+  <script src="js/cloud.js?v=14"></script>
+  <script src="js/importer.js?v=14"></script>
+  <script src="js/scheduler.js?v=14"></script>
+  <script src="js/app.js?v=14"></script>
 </body>
 </html>
