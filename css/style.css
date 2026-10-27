@@ -552,3 +552,11 @@ body.viewer .score { background: #fff; color: var(--navy); opacity: 1; }
   .log-what { grid-column: 1 / -1; }
   #logCard input[type=search] { max-width: none; width: 100%; }
 }
+
+/* ---------- verdeling potjes ---------- */
+.fair-toggle { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; margin-bottom: 14px; border-radius: 14px; background: rgba(255, 255, 255, .1); }
+.fair-toggle label { padding: 7px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; color: #d7d9ea; }
+.fair-toggle label.on { background: var(--t-pink); color: var(--navy); }
+.fair-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.fair-toggle label:focus-within { outline: 2px solid var(--t-pink); outline-offset: 2px; }
+.summary .alert.warn { background: var(--t-yellow); }

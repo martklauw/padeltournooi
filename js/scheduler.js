@@ -202,7 +202,7 @@ const Scheduler = (() => {
     }));
   }
 
-  function generateOnce({ players, courts, pools, keptRounds, totalRounds, levelMode }) {
+  function generateOnce({ players, courts, pools, keptRounds, totalRounds, levelMode, allocation }) {
     const activeSet = new Set(players.filter(p => p.active !== false).map(p => p.id));
     const ctx = makeContext(players, keptRounds, levelMode);
     const rounds = keptRounds.slice();
@@ -211,9 +211,10 @@ const Scheduler = (() => {
       : [{ pool: null, ids: [...activeSet] }];
 
     for (let ri = keptRounds.length; ri < totalRounds; ri++) {
-      // Banen verdelen over poules: de poule met het minste gemiddelde aantal potjes krijgt de volgende baan.
-      const alloc = groups.map(() => 0);
-      for (let c = 0; c < courts.length; c++) {
+      // Vaste verdeling ("iedereen evenveel") of: de poule met het minste gemiddelde aantal
+      // potjes krijgt de volgende baan.
+      const alloc = allocation ? allocation[ri - keptRounds.length].slice() : groups.map(() => 0);
+      for (let c = 0; !allocation && c < courts.length; c++) {
         let best = -1, bestScore = Infinity;
         groups.forEach((g, gi) => {
           if (alloc[gi] >= Math.floor(g.ids.length / 4)) return;
@@ -245,6 +246,80 @@ const Scheduler = (() => {
     return rounds;
   }
 
+  // ---------- verdeling van potjes ----------
+
+  // "Banen maximaal bezet": dezelfde baanverdeling als het schema, om vooraf te tonen
+  // hoeveel potjes ieder speelt. sizes = aantal aanwezige spelers per poule.
+  function maxAllocation(sizes, courtsN, rounds) {
+    const caps = sizes.map(n => Math.floor(n / 4));
+    const games = sizes.map(() => 0);
+    const perRound = [];
+    for (let r = 0; r < rounds; r++) {
+      const alloc = sizes.map(() => 0);
+      for (let c = 0; c < courtsN; c++) {
+        let best = -1, bestScore = Infinity;
+        sizes.forEach((n, i) => {
+          if (alloc[i] >= caps[i]) return;
+          const score = (games[i] + 4 * alloc[i]) / n;
+          if (score < bestScore) { bestScore = score; best = i; }
+        });
+        if (best < 0) break;
+        alloc[best]++;
+      }
+      alloc.forEach((a, i) => { games[i] += 4 * a; });
+      perRound.push(alloc);
+    }
+    return { perRound, matches: games.map(g => g / 4) };
+  }
+
+  // "Iedereen evenveel potjes": hoogste aantal G waarbij iedere aanwezige speler precies G
+  // potjes speelt. counts = per poule de al gespeelde potjes per speler (bij herplannen).
+  function equalAllocation(counts, courtsN, rounds) {
+    if (!rounds) return null;
+    const caps = counts.map(c => Math.floor(c.length / 4));
+    const maxPlayed = Math.max(0, ...counts.flat());
+    for (let G = maxPlayed + rounds; G >= Math.max(1, maxPlayed); G--) {
+      const need = counts.map(c => c.reduce((s, x) => s + (G - x), 0));
+      if (need.some(n => n % 4)) continue;
+      if (counts.some(c => c.some(x => G - x > rounds))) continue;
+      const M = need.map(n => n / 4);
+      if (M.some((m, i) => m > caps[i] * rounds)) continue;
+      if (M.reduce((a, b) => a + b, 0) > courtsN * rounds) continue;
+      const perRound = spread(M, caps, courtsN, rounds);
+      if (perRound) return { games: G, perRound, matches: M, idle: courtsN * rounds - M.reduce((a, b) => a + b, 0) };
+    }
+    return null;
+  }
+
+  // Verdeel per poule M potjes zo gelijkmatig mogelijk over de rondes, binnen het aantal banen.
+  function spread(M, caps, courtsN, rounds) {
+    const rem = M.slice();
+    const perRound = [];
+    for (let r = 0; r < rounds; r++) {
+      const left = rounds - r;
+      const a = rem.map((m, i) => Math.min(caps[i], Math.ceil(m / left)));
+      const must = rem.map((m, i) => Math.max(0, m - caps[i] * (left - 1)));
+      let sum = a.reduce((x, y) => x + y, 0);
+      while (sum > courtsN) {
+        let best = -1;
+        a.forEach((v, i) => { if (v > must[i] && (best < 0 || v - must[i] > a[best] - must[best])) best = i; });
+        if (best < 0) return null;
+        a[best]--; sum--;
+      }
+      let rest = rem.reduce((s, m, i) => s + m - a[i], 0);
+      while (rest > courtsN * (left - 1) && sum < courtsN) {
+        let best = -1;
+        a.forEach((v, i) => { if (v < caps[i] && v < rem[i] && (best < 0 || rem[i] - v > rem[best] - a[best])) best = i; });
+        if (best < 0) return null;
+        a[best]++; sum++; rest--;
+      }
+      if (rest > courtsN * (left - 1)) return null;
+      a.forEach((v, i) => { rem[i] -= v; });
+      perRound.push(a);
+    }
+    return rem.every(x => x === 0) ? perRound : null;
+  }
+
   // Volgorde in een knock-outschema zodat 1 en 2 pas in de finale kunnen treffen.
   function bracketOrder(n) {
     let order = [0, 1];
@@ -255,5 +330,5 @@ const Scheduler = (() => {
     return order;
   }
 
-  return { uid, shuffle, makePools, generateRounds, bracketOrder };
+  return { uid, shuffle, makePools, generateRounds, bracketOrder, maxAllocation, equalAllocation };
 })();

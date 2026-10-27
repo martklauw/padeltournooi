@@ -37,6 +37,7 @@
         koMatchMinutes: 20,
         rankBy: 'total',
         levelMode: 'balanced',
+        fairness: 'max',
       },
       schedule: null,
       knockout: null,
@@ -230,20 +231,58 @@
     if (rounds < 1 && active >= 4) errors.push('Er is niet genoeg tijd voor één poulewedstrijd. Verleng de baantijd of verkort de wedstrijden.');
     if (used > total) notes.push({ warn: true, text: `Het schema duurt ${used - total} minuten langer dan de beschikbare baantijd.` });
 
-    const resting = active - perRound * 4;
-    if (resting > 0 && active >= 4) {
-      notes.push({ text: `Per ronde rusten ${resting} speler${resting === 1 ? '' : 's'} (${perRound} ${perRound === 1 ? 'baan' : 'banen'} in gebruik). Rust wordt eerlijk verdeeld.` });
+    // Hoeveel potjes speelt iedereen, bij "banen maximaal bezet" en bij "iedereen evenveel"?
+    const equal = cfg.fairness === 'equal';
+    let dist = null;
+    let eq = null;
+    if (active >= 4 && rounds > 0 && courts > 0 && !sizes.some(n => n < 4)) {
+      dist = gamesSpread(sizes, Scheduler.maxAllocation(sizes, courts, rounds).matches);
+      eq = Scheduler.equalAllocation(sizes.map(n => Array(n).fill(0)), courts, rounds);
     }
-    if (courts > perRound && active >= 4) {
-      notes.push({ text: `${courts - perRound} ${courts - perRound === 1 ? 'baan blijft' : 'banen blijven'} per ronde ongebruikt door het aantal spelers.` });
+    const distKeys = dist ? [...dist.keys()] : [];
+    const unequal = distKeys.length > 1;
+    if (equal && dist && !eq) {
+      errors.push('“Iedereen evenveel potjes” is met deze aantallen niet haalbaar. Kies “Banen maximaal bezet” of pas het aantal rondes aan.');
     }
-    const gamesPerPlayer = active ? (rounds * perRound * 4) / active : 0;
+    if (equal && eq) {
+      notes.push({ text: `Iedereen speelt ${eq.games} potjes.${eq.idle ? ` Daarvoor ${eq.idle === 1 ? 'blijft' : 'blijven'} er in totaal ${eq.idle} baanbeurt${eq.idle === 1 ? '' : 'en'} leeg.` : ' Alle banen zijn steeds bezet.'}` });
+    } else if (dist) {
+      const resting = active - perRound * 4;
+      if (resting > 0) {
+        notes.push({ text: `Per ronde rusten ${resting} speler${resting === 1 ? '' : 's'} (${perRound} ${perRound === 1 ? 'baan' : 'banen'} in gebruik). Rust wordt eerlijk verdeeld.` });
+      }
+      if (courts > perRound) {
+        notes.push({ text: `${courts - perRound} ${courts - perRound === 1 ? 'baan blijft' : 'banen blijven'} per ronde ongebruikt door het aantal spelers.` });
+      }
+      if (unequal) {
+        notes.push({ warn: true, text: `Niet iedereen speelt evenveel: ${distText(dist)}. `
+          + (eq ? `Kies “Iedereen evenveel potjes” om iedereen ${eq.games} potjes te laten spelen, of rangschik op gemiddelde games per potje.`
+            : 'Rangschik op gemiddelde games per potje om dit eerlijk te houden.') });
+      }
+    }
+    const gamesText = equal && eq ? String(eq.games)
+      : dist ? (unequal ? `${Math.min(...distKeys)}–${Math.max(...distKeys)}` : String(distKeys[0])) : '0';
 
     return {
       total, slot, rounds, autoRounds, perRound, koRounds, koMinutes, koMM, start, koStart,
-      end: start + used, used, active, sizes, spec, ko, gamesPerPlayer, errors, notes,
+      end: start + used, used, active, sizes, spec, ko, gamesText, dist, eq, errors, notes,
     };
   }
+
+  // Per aantal potjes: hoeveel spelers. matches = aantal potjes per poule.
+  function gamesSpread(sizes, matches) {
+    const out = new Map();
+    sizes.forEach((n, i) => {
+      const slots = 4 * matches[i];
+      const q = Math.floor(slots / n);
+      const extra = slots % n;
+      if (extra) out.set(q + 1, (out.get(q + 1) || 0) + extra);
+      if (n - extra) out.set(q, (out.get(q) || 0) + n - extra);
+    });
+    return new Map([...out].sort((a, b) => b[0] - a[0]));
+  }
+
+  const distText = dist => [...dist].map(([g, n]) => `${n} speler${n === 1 ? '' : 's'} ${g} potje${g === 1 ? '' : 's'}`).join(', ');
 
   function roundStart(i) {
     const p = plan(state.config);
@@ -357,9 +396,23 @@
       pools = null;
     }
 
+    const totalRounds = Math.max(p.rounds, kept.length);
+    let allocation = null;
+    if (cfg.fairness === 'equal') {
+      // Vaste baanverdeling per ronde zodat iedereen precies evenveel potjes speelt.
+      const activeIds = new Set(activePlayers.map(pl => pl.id));
+      const groupIds = pools ? pools.map(pl => pl.playerIds.filter(id => activeIds.has(id))) : [[...activeIds]];
+      const playedSoFar = id => kept.reduce((n, r) => n + r.matches.filter(m => m.teamA.includes(id) || m.teamB.includes(id)).length, 0);
+      const eq = Scheduler.equalAllocation(groupIds.map(ids => ids.map(playedSoFar)), cfg.courts.length, totalRounds - kept.length);
+      if (!eq) {
+        alert('“Iedereen evenveel potjes” is met deze spelers en rondes niet haalbaar. Kies “Banen maximaal bezet” of pas het aantal rondes aan.');
+        return;
+      }
+      allocation = eq.perRound;
+    }
     const rounds = Scheduler.generateRounds({
       players, courts: cfg.courts, pools, keptRounds: kept,
-      totalRounds: Math.max(p.rounds, kept.length), levelMode: cfg.levelMode,
+      totalRounds, levelMode: cfg.levelMode, allocation,
     });
     state.schedule = { createdAt: Date.now(), poolMode: cfg.poolMode, pools, rounds };
     if (!keepPlayed) state.knockout = null;
@@ -791,11 +844,17 @@
     const played = hasSched && lastScoredRound() >= 0;
     el.innerHTML = `
       <h2>Planning</h2>
+      <div class="fair-toggle" role="radiogroup" aria-label="Verdeling potjes">
+        ${[['max', 'Banen maximaal bezet'], ['equal', 'Iedereen evenveel potjes']].map(([v, label]) => `
+          <label class="${(c.fairness || 'max') === v ? 'on' : ''}">
+            <input type="radio" name="fairness" data-field="fairness" value="${v}" ${(c.fairness || 'max') === v ? 'checked' : ''}>${label}
+          </label>`).join('')}
+      </div>
       <div class="stats">
         <div class="stat"><b>${p.total}</b><span>minuten baantijd</span></div>
         <div class="stat"><b>${p.rounds}</b><span>poulerondes${c.roundsOverride ? '' : ' (auto)'}</span></div>
         <div class="stat"><b>${p.perRound}</b><span>potjes per ronde</span></div>
-        <div class="stat"><b>${p.gamesPerPlayer.toFixed(1)}</b><span>potjes per speler</span></div>
+        <div class="stat"><b>${p.gamesText}</b><span>potjes per speler</span></div>
         <div class="stat"><b>${fmt(p.end)}</b><span>verwachte eindtijd</span></div>
       </div>
       <ul class="timeline">
@@ -881,8 +940,9 @@
     changeMinutes: 'Wisseltijd', roundsOverride: 'Aantal poulerondes', poolMode: 'Poule-indeling',
     unknownTo: '“Weet ik niet” speelt bij', poolCount: 'Aantal poules', levelMode: 'Indeling teams per ronde',
     rankBy: 'Ranglijst op basis van', koType: 'Knock-outfase', koPairing: 'Teams vormen knock-out',
-    koMatchMinutes: 'Duur knock-outpotje',
+    koMatchMinutes: 'Duur knock-outpotje', fairness: 'Verdeling potjes',
   };
+  const FIELD_VALUES = { fairness: { max: 'Banen maximaal bezet', equal: 'Iedereen evenveel potjes' } };
 
   // Leesbare omschrijving van een wedstrijd voor het logboek.
   function matchLabel(m) {
@@ -911,7 +971,8 @@
         const field = t.dataset.field;
         let v = t.type === 'checkbox' ? t.checked : t.value;
         if ('num' in t.dataset) v = v === '' ? null : Number(v);
-        const show = x => (t.tagName === 'SELECT' ? [...t.options].find(o => o.value === String(x))?.text ?? x : x ?? 'automatisch');
+        const show = x => FIELD_VALUES[field]?.[x]
+          ?? (t.tagName === 'SELECT' ? [...t.options].find(o => o.value === String(x))?.text ?? x : x ?? 'automatisch');
         logLater('field:' + field, c[field], b => (c[field] === b ? null
           : { action: 'Instelling gewijzigd', detail: `${FIELD_LABELS[field] || field}: ${show(b)} → ${show(c[field])}` }));
         c[field] = v;
@@ -985,7 +1046,7 @@
         c.courts.length = n;
         save();
         renderConfig();
-      } else if (['poolMode', 'koType', 'rankBy'].includes(t.dataset.field) || t.dataset.pf === 'active') {
+      } else if (['poolMode', 'koType', 'rankBy', 'fairness'].includes(t.dataset.field) || t.dataset.pf === 'active') {
         renderConfig();
       }
     });
