@@ -14,7 +14,7 @@
 
   const KO_TEAMS = { none: 0, final: 2, semi: 4, quarter: 8, eighth: 16 };
   const KO_NAMES = { 2: 'Finale', 4: 'Halve finale', 8: 'Kwartfinale', 16: 'Achtste finale' };
-  const POOL_NAMES = { BEG: 'Recreatief', ADV: 'Ervaren' };
+  const POOL_NAMES = { BEG: 'Poule 1', ADV: 'Poule 2' };
 
   // ---------- state ----------
 
@@ -67,7 +67,7 @@
     if (s.knockout && !s.knockout.brackets) {
       s.knockout = { brackets: [{ poolId: null, name: 'Knock-out', seeds: s.knockout.seeds, rounds: s.knockout.rounds }] };
     }
-    // Poules heetten eerder "Beginners" en "Gevorderden".
+    // Bestaande poules krijgen de huidige namen (eerder "Beginners"/"Gevorderden", daarna "Recreatief"/"Ervaren").
     s.schedule?.pools?.forEach(p => { if (POOL_NAMES[p.id]) p.name = POOL_NAMES[p.id]; });
     s.knockout?.brackets?.forEach(b => { if (POOL_NAMES[b.poolId]) b.name = POOL_NAMES[b.poolId]; });
   }
@@ -679,18 +679,18 @@
           <h2>Poulefase</h2>
           <label class="field">Indeling
             <select data-field="poolMode">
-              <option value="level" ${c.poolMode === 'level' ? 'selected' : ''}>Twee toernooien: recreatief en ervaren</option>
+              <option value="level" ${c.poolMode === 'level' ? 'selected' : ''}>Twee toernooien: Poule 1 (recreatief) en Poule 2 (ervaren)</option>
               <option value="mixed" ${c.poolMode === 'mixed' ? 'selected' : ''}>Gemengde poules, even sterk verdeeld</option>
               <option value="none" ${c.poolMode === 'none' ? 'selected' : ''}>Geen poules, iedereen speelt door elkaar</option>
             </select>
           </label>
           ${c.poolMode === 'level' ? `
-            <p class="muted">Recreatieve en ervaren spelers spelen elk in een eigen poule en nooit tegen elkaar. Elke poule heeft een eigen ranglijst en een eigen knock-out.</p>
+            <p class="muted">Recreatieve spelers spelen in Poule 1, ervaren spelers in Poule 2, en nooit tegen elkaar. Elke poule heeft een eigen ranglijst en een eigen knock-out.</p>
             <label class="field">Spelers met “weet ik niet” spelen bij
               <select data-field="unknownTo">
                 <option value="balance" ${c.unknownTo === 'balance' ? 'selected' : ''}>De kleinste poule (poules even groot)</option>
-                <option value="beginner" ${c.unknownTo === 'beginner' ? 'selected' : ''}>De recreatieve poule</option>
-                <option value="advanced" ${c.unknownTo === 'advanced' ? 'selected' : ''}>De ervaren poule</option>
+                <option value="beginner" ${c.unknownTo === 'beginner' ? 'selected' : ''}>Poule 1 (recreatief)</option>
+                <option value="advanced" ${c.unknownTo === 'advanced' ? 'selected' : ''}>Poule 2 (ervaren)</option>
               </select>
             </label>` : ''}
           ${c.poolMode === 'mixed' ? `
@@ -735,7 +735,7 @@
             <input type="number" min="1" max="180" data-field="koMatchMinutes" data-num value="${c.koMatchMinutes}" ${c.koType === 'none' ? 'disabled' : ''}>
           </label>
           <p class="muted">${{
-            level: 'Recreatief en Ervaren spelen elk een eigen knock-out met de besten uit hun poule. Is een poule te klein, dan begint die knock-out automatisch later (bijvoorbeeld alleen een finale). De finales worden tegelijk gespeeld.',
+            level: 'Poule 1 en Poule 2 spelen elk een eigen knock-out met de besten uit hun poule. Is een poule te klein, dan begint die knock-out automatisch later (bijvoorbeeld alleen een finale). De finales worden tegelijk gespeeld.',
             mixed: 'Uit elke poule plaatsen de besten zich evenredig; eventuele resterende plekken gaan naar de beste overige spelers.',
             none: 'De best geplaatste spelers in de individuele ranglijst plaatsen zich.',
           }[c.poolMode]}</p>
