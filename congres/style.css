@@ -159,6 +159,24 @@ textarea { resize: vertical; min-height: 70px; }
 .scard .actions { margin-top: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-top: 6px; }
 .empty { padding: 40px; text-align: center; color: var(--muted); }
 
+/* ---------- sprekers ---------- */
+.sprekers { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+.spreker { background: #fff; border-radius: 18px; box-shadow: var(--shadow); padding: 18px 20px; border-top: 6px solid var(--t-pink); scroll-margin-top: 90px; transition: box-shadow .3s; }
+.spreker.flash { box-shadow: 0 0 0 4px var(--pink); }
+.spreker-kop { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.spreker-kop h3 { margin: 0; }
+.avatar { width: 46px; height: 46px; flex: none; border-radius: 14px 14px 14px 4px; background: var(--navy); color: #fff; display: grid; place-items: center; font-family: var(--head); font-weight: 700; font-size: 1.05rem; }
+.spreker .rich { font-size: .93rem; }
+.spreker-sessies { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.sessie-chip { text-align: left; border: 0; border-left: 4px solid var(--c); background: var(--bg-c); border-radius: 10px; padding: 6px 10px; font-size: .86rem; color: var(--navy); }
+.sessie-chip:hover { filter: brightness(.97); }
+.sessie-chip span { color: var(--muted); }
+.status::before { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 99px; font-size: .72rem; font-weight: 700; }
+.st-concept::before { content: "Concept"; background: var(--t-yellow); }
+.st-controleren::before { content: "Controleren"; background: var(--t-orange); }
+.st-bron::before { content: "Met bron"; background: var(--t-blue); }
+.st-gecontroleerd::before { content: "Gecontroleerd"; background: var(--t-green); }
+
 /* ---------- mijn schema ---------- */
 .my { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; }
 @media (max-width: 900px) { .my { grid-template-columns: 1fr; } }

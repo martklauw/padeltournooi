@@ -38,6 +38,8 @@
     d.info = Object.assign({ naam: 'Congres', ondertitel: '', datum: '', locatie: '', intro: '' }, d.info || {});
     d.typen = Array.isArray(d.typen) ? d.typen : [];
     d.zalen = Array.isArray(d.zalen) ? d.zalen : [];
+    if (!Array.isArray(d.sprekers)) d.sprekers = clone(window.STANDAARD_PROGRAMMA.sprekers || []);
+    d.sprekers = d.sprekers.filter(x => x && x.naam).map(x => ({ zoek: x.naam, organisatie: '', status: 'concept', bio: '', bronnen: [], ...x }));
     d.sessies = (Array.isArray(d.sessies) ? d.sessies : []).filter(s => s && s.id && validTime(s.start) && validTime(s.eind));
     return d;
   }
@@ -61,6 +63,8 @@
     DAG_LEN = Math.max(30, DAG_EIND - DAG_START);
   }
 
+  const sprekersVan = s => data.sprekers.filter(x => x.zoek && norm(s.spreker).includes(norm(x.zoek)));
+  const sprekerAnker = x => 'spreker-' + norm(x.naam).replace(/[^a-z0-9]+/g, '-');
   const typeInfo = naam => data.typen.find(t => t.naam === naam) || { naam, kleur: 'navy', uitleg: '' };
   const kleurVars = type => { const p = PALET[typeInfo(type).kleur] || PALET.navy; return `--c:${p.c};--bg-c:${p.bg}`; };
   const editable = () => !Cloud.enabled || Cloud.canEdit();
@@ -248,9 +252,39 @@
     renderCloud(); renderHero(); renderChips(); renderGrid(); renderList(); renderMy();
     renderBeheer();
     document.querySelectorAll('.tabs [data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-    ['grid', 'list', 'my', 'beheer'].forEach(v => { $('#view-' + v).hidden = v !== view; });
+    renderSprekers();
+    ['grid', 'list', 'sprekers', 'my', 'beheer'].forEach(v => { $('#view-' + v).hidden = v !== view; });
     $('#filters').hidden = !(view === 'grid' || view === 'list');
     if ($('#modal').open && openId) openDetail(openId);
+  }
+
+  /* ===================== Sprekers ===================== */
+  let sprekerZoek = '';
+  function renderSprekers() {
+    const el = $('#view-sprekers');
+    const q = norm(sprekerZoek);
+    const lijst = [...data.sprekers]
+      .map(x => ({ x, sessies: SESSIES.filter(s => norm(s.spreker).includes(norm(x.zoek))) }))
+      .filter(({ x, sessies }) => sessies.length && (!q || norm([x.naam, x.organisatie, x.bio, ...sessies.map(s => s.titel)].join(' ')).includes(q)))
+      .sort((a, b) => a.x.naam.localeCompare(b.x.naam, 'nl'));
+    const kaarten = lijst.map(({ x, sessies }) => `
+      <article class="spreker" id="${sprekerAnker(x)}">
+        <div class="spreker-kop">
+          <div class="avatar" aria-hidden="true">${esc(x.naam.split(/\s+/).filter(w => /^[A-ZÀ-Ý]/.test(w)).slice(0, 2).map(w => w[0]).join('') || x.naam[0])}</div>
+          <div><h3>${esc(x.naam)}</h3>${x.organisatie ? `<div class="meta">${esc(x.organisatie)}</div>` : ''}</div>
+        </div>
+        ${x.bio ? `<div class="rich">${opmaak(x.bio)}</div>` : '<p class="hint">Meer informatie volgt.</p>'}
+        <div class="spreker-sessies">${sessies.map(s => `<button class="sessie-chip" data-open="${s.id}" style="${kleurVars(s.type)}">
+          <b>${fmt(s.start)}</b> ${esc(s.titel)} <span>· ${esc(s.zaal)}</span></button>`).join('')}</div>
+      </article>`).join('');
+    const lijstHTML = kaarten || '<div class="empty">Geen sprekers gevonden.</div>';
+    if ($('#sprekerLijst') && el.contains(document.activeElement)) { $('#sprekerLijst').innerHTML = lijstHTML; return; }
+    el.innerHTML = `
+      <div class="card filterbar"><div class="filters">
+        <input type="search" id="sprekerZoek" placeholder="Zoek een spreker, organisatie of onderwerp…" value="${esc(sprekerZoek)}">
+        <span class="hint" style="margin:0">${lijst.length} sprekers en organisaties</span>
+      </div></div>
+      <div class="sprekers" id="sprekerLijst">${lijstHTML}</div>`;
   }
 
   /* ===================== Detailvenster ===================== */
@@ -275,13 +309,14 @@
         <dl class="facts">
           <dt>Tijd</dt><dd>${fmt(s.start)} – ${fmt(s.eind)} uur (${s.duur} minuten)</dd>
           <dt>Zaal</dt><dd>${esc(s.zaal)}${s.cap ? ` · ${s.cap} plaatsen` : ''}</dd>
-          <dt>Door</dt><dd>${esc(s.spreker)}</dd>
+          <dt>Door</dt><dd>${esc(s.spreker)}${sprekersVan(s).length ? ` · <button class="linkbtn" style="padding:0" data-spreker="${esc(sprekersVan(s)[0].naam)}">over de spreker</button>` : ''}</dd>
         </dl>
         ${s.samenvatting ? `<p class="lead">${esc(s.samenvatting)}</p>` : ''}
         ${s.beschrijving ? `<div class="rich">${opmaak(s.beschrijving)}</div>` : ''}
         ${s.doelgroep ? `<h4>Voor wie</h4><div class="rich">${opmaak(s.doelgroep)}</div>` : ''}
         ${videoEmbed(s.video) ? `<h4>Video</h4><div class="video"><iframe src="${esc(videoEmbed(s.video))}" title="Video bij ${esc(s.titel)}" loading="lazy" allow="fullscreen; picture-in-picture; encrypted-media" allowfullscreen></iframe></div>` : ''}
-        ${s.sprekerInfo ? `<h4>Over ${esc(s.spreker)}</h4><div class="rich">${opmaak(s.sprekerInfo)}</div>` : ''}
+        ${s.sprekerInfo ? `<h4>Over ${esc(s.spreker)}</h4><div class="rich">${opmaak(s.sprekerInfo)}</div>`
+          : sprekersVan(s).filter(x => x.bio).map(x => `<h4>Over ${esc(x.naam)}</h4><div class="rich">${opmaak(x.bio)}</div>`).join('')}
         ${info.uitleg ? `<p class="hint"><b>Wat is een ${esc(s.type.toLowerCase())}?</b> ${esc(info.uitleg)}</p>` : ''}
         ${b.length ? `<div class="clashbox">⚠️ Deze sessie overlapt met je keuze: <b>${b.map(x => esc(x.titel) + ` (${fmt(x.start)}–${fmt(x.eind)})`).join(', ')}</b>.
            <div style="margin-top:8px"><button class="btn pink" data-replace="${s.id}">Vervang door deze sessie</button></div></div>` : ''}
@@ -473,6 +508,42 @@
               </tr>`; }).join('')}
             </tbody>
           </table>
+        </section>
+
+        <section class="card span-2">
+          <div class="card-head">
+            <h2>Sprekers (${data.sprekers.length})</h2>
+            <div class="inline">
+              <button class="btn small" data-sprekersaanvullen title="Maakt een kopje aan voor elke spreker in het programma die er nog geen heeft">Ontbrekende sprekers aanmaken</button>
+              <button class="btn small" data-addspreker>+ Spreker</button>
+            </div>
+          </div>
+          <p class="hint">De teksten zijn een eerste opzet op basis van openbare bronnen. <b>Concept</b> = weinig online gevonden, aanvullen met info van de spreker. <b>Controleren</b> = check of de bron over dezelfde persoon gaat. Zet de status op <b>Gecontroleerd</b> als de tekst klopt. Het veld "Koppelen aan" bepaalt bij welke sessies de spreker hoort (tekst die in het sprekersveld van de sessie voorkomt).</p>
+          <div class="tbl-scroll">
+            <table class="tbl">
+              <thead><tr><th>Spreker</th><th>Tekst</th><th>Status &amp; bronnen</th><th></th></tr></thead>
+              <tbody>${[...data.sprekers].map((x, idx) => ({ x, idx })).sort((a, b) => a.x.naam.localeCompare(b.x.naam, 'nl')).map(({ x, idx }) => {
+                const n = SESSIES.filter(s => norm(s.spreker).includes(norm(x.zoek))).length;
+                return `<tr>
+                  <td style="width:22%">
+                    <input type="text" data-spr="${idx}" data-field="naam" value="${esc(x.naam)}" title="Naam">
+                    <input type="text" data-spr="${idx}" data-field="organisatie" value="${esc(x.organisatie)}" placeholder="Organisatie" style="margin-top:4px">
+                    <label class="hint" style="display:block;margin-top:4px">Koppelen aan<input type="text" data-spr="${idx}" data-field="zoek" value="${esc(x.zoek)}"></label>
+                    <span class="hint">${n} sessie(s)</span>
+                  </td>
+                  <td><textarea data-spr="${idx}" data-field="bio" rows="5">${esc(x.bio)}</textarea></td>
+                  <td style="width:20%">
+                    <select data-spr="${idx}" data-field="status">
+                      ${[['concept', 'Concept'], ['controleren', 'Controleren'], ['bron', 'Met bron'], ['gecontroleerd', 'Gecontroleerd']].map(([k, l]) => `<option value="${k}" ${x.status === k ? 'selected' : ''}>${l}</option>`).join('')}
+                    </select>
+                    <span class="status st-${esc(x.status)}"></span>
+                    ${(x.bronnen || []).map((u, i) => `<div><a href="${esc(u)}" target="_blank" rel="noopener" class="hint">bron ${i + 1}</a></div>`).join('')}
+                  </td>
+                  <td><button class="icon-btn" data-delspreker="${idx}" title="Verwijderen">✕</button></td>
+                </tr>`; }).join('')}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section class="card span-2">
@@ -672,6 +743,13 @@
     if (d.open) return openDetail(d.open);
     if ('close' in d) return $('#modal').close();
     if (d.type) { filter.types.has(d.type) ? filter.types.delete(d.type) : filter.types.add(d.type); return render(); }
+    if (d.spreker) {
+      $('#modal').close(); view = 'sprekers'; sprekerZoek = ''; render();
+      const x = data.sprekers.find(y => y.naam === d.spreker);
+      const el = x && document.getElementById(sprekerAnker(x));
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1600); }
+      return;
+    }
     if (d.view) { view = d.view; history.replaceState(null, '', '#' + view); window.scrollTo({ top: 0 }); return render(); }
     if (d.attime) { $('#modal').close(); filter.at = d.attime; view = 'list'; render(); $('#at').value = filter.at; return; }
     if ('clearwin' in d) { filter.win = null; return render(); }
@@ -704,6 +782,18 @@
       if (a && confirm(`${a.email} verwijderen als beheerder?`)) Cloud.removeAdmin(d.deladmin).catch(err => alert('Verwijderen is niet gelukt: ' + err.message));
       return;
     }
+    if ('addspreker' in d) return wijzig(dd => { dd.sprekers.push({ naam: 'Nieuwe spreker', zoek: 'Nieuwe spreker', organisatie: '', status: 'concept', bio: '', bronnen: [] }); }, 'Spreker toegevoegd');
+    if (d.delspreker) {
+      const x = data.sprekers[+d.delspreker];
+      if (x && confirm(`Het kopje voor ${x.naam} verwijderen?`)) wijzig(dd => { dd.sprekers.splice(+d.delspreker, 1); }, 'Spreker verwijderd');
+      return;
+    }
+    if ('sprekersaanvullen' in d) {
+      const nieuw = [...new Set(data.sessies.map(s => s.spreker).filter(Boolean))]
+        .filter(sp => !data.sprekers.some(x => norm(sp).includes(norm(x.zoek))));
+      if (!nieuw.length) return toast('Alle sprekers hebben al een kopje');
+      return wijzig(dd => nieuw.forEach(sp => dd.sprekers.push({ naam: sp, zoek: sp, organisatie: '', status: 'concept', bio: '', bronnen: [] })), `${nieuw.length} spreker(s) aangemaakt`);
+    }
     if ('export' in d) return exportBackup();
     if ('import' in d) return $('#importFile').click();
     if ('publish' in d) return wijzig(() => {}, 'Programma staat online');
@@ -723,6 +813,10 @@
       }
       return wijzig(dd => { dd.zalen[idx].capaciteit = el.value === '' ? null : Math.max(0, +el.value); }, 'Opgeslagen');
     }
+    if (d.spr) {
+      const idx = +d.spr;
+      return wijzig(dd => { dd.sprekers[idx][d.field] = el.value.trim(); if (d.field === 'naam' && !dd.sprekers[idx].zoek) dd.sprekers[idx].zoek = el.value.trim(); }, 'Opgeslagen');
+    }
     if (d.typ) {
       const idx = +d.typ, old = data.typen[idx].naam;
       if (d.field === 'naam') {
@@ -741,6 +835,9 @@
       e.target.blur(); renderBeheer();
       const n = $('#beheerZoek'); n.focus(); n.setSelectionRange(pos, pos);
     }
+  });
+  document.addEventListener('input', e => {
+    if (e.target.id === 'sprekerZoek') { sprekerZoek = e.target.value; renderSprekers(); }
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && e.target.id === 'newAdmin') { e.preventDefault(); addAdmin(); }
@@ -891,7 +988,7 @@
 
   /* ===================== Start ===================== */
   const startView = location.hash.slice(1);
-  if (['grid', 'list', 'my', 'beheer'].includes(startView)) view = startView;
+  if (['grid', 'list', 'sprekers', 'my', 'beheer'].includes(startView)) view = startView;
 
   Cloud.init({
     onData(d) {

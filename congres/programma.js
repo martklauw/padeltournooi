@@ -920,5 +920,415 @@ window.STANDAARD_PROGRAMMA = {
    "spreker": "Buro Schoolwerk",
    "beschrijving": ""
   }
+ ],
+ "sprekers": [
+  {
+   "naam": "Naomi Smits",
+   "zoek": "Naomi Smits",
+   "organisatie": "",
+   "status": "controleren",
+   "bio": "Naomi Smits kent het onderwijs van binnenuit: als juf in het basisonderwijs schreef ze jarenlang scherpe en herkenbare onderwijscolumns voor Trouw, die werden gebundeld in haar boek **Juf Naomi klapt uit de school** (Uitgeverij Pica). Met humor, eerlijkheid en een frisse blik laat ze zien wat er écht gebeurt in de klas. In haar lezing *Wie niet leest is gek!* breekt ze een lans voor lezen – een aanrader voor iedereen die leesplezier hoog in het vaandel heeft.",
+   "bronnen": [
+    "https://www.bol.com/nl/nl/p/juf-naomi-klapt-uit-de-school/9300000021939826/",
+    "https://www.bibliotheek.nl/catalogus/titel.432225927.html/eh----juf--hoe-krijg-je-eigenlijk-kinderen-"
+   ]
+  },
+  {
+   "naam": "Erna van Koeven",
+   "zoek": "Erna van Koeven",
+   "organisatie": "Hogeschool Windesheim",
+   "status": "bron",
+   "bio": "Erna van Koeven is een van dé gezichten van rijk taalonderwijs in Nederland. Als hoofddocent en onderzoeker bij Hogeschool Windesheim (lectoraat Onderwijsinnovatie en ICT, leerkring Geletterdheid en Schoolsucces) verbindt ze onderzoek en praktijk. Samen met Anneke Smits schreef ze het veelgebruikte handboek **Rijke taal**, dat talloze leerkrachten en pabostudenten inspireert om met rijke teksten te werken. Een spreker die je niet wilt missen.",
+   "bronnen": [
+    "https://www.nt2.nl/en/auteur/110-8605_Koeven",
+    "https://www.deslegte.com/rijke-taal-2418513/"
+   ]
+  },
+  {
+   "naam": "Bas van Eerd",
+   "zoek": "Bas van Eerd",
+   "organisatie": "Hogeschool van Amsterdam",
+   "status": "bron",
+   "bio": "Bas van Eerd weet als geen ander hoe belangrijk woorden zijn: een goede woordenschat is de basis voor succes op school en in de maatschappij. Samen met Suzanne van Oers ontwikkelde hij de **Leerwoordenlijst voor het primair onderwijs** (Boom). Daarnaast is hij als onderzoeker verbonden aan het lectoraat Kansrijke Schoolloopbanen van de Hogeschool van Amsterdam. In zijn workshop krijg je direct toepasbare inzichten voor woordenschatonderwijs in jouw klas.",
+   "bronnen": [
+    "https://boom.nl/auteurs/alfabet/100-18898_Leeswoordenlijst-Basispakket",
+    "https://research.hva.nl/en/persons/bas-van-eerd/"
+   ]
+  },
+  {
+   "naam": "Nick Slippens",
+   "zoek": "Nick Slippens",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Nick Slippens laat in zijn inspiratiesessie zien hoe rijke teksten de brug slaan van lezen naar betekenisvol taalonderwijs. Met voorbeelden uit de praktijk krijg je volop ideeën om morgen al mee aan de slag te gaan.",
+   "bronnen": []
+  },
+  {
+   "naam": "Monique van Houdt",
+   "zoek": "Monique van Houdt",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Monique van Houdt neemt je in haar workshop mee *van boek naar verbeelding*. Ze laat zien hoe je verhalen tot leven brengt en kinderen uitnodigt om hun verbeelding de vrije loop te laten – een inspirerende sessie voor iedereen die lezen en creativiteit wil verbinden.",
+   "bronnen": []
+  },
+  {
+   "naam": "Rigoberta Meija Sian",
+   "zoek": "Rigoberta Meija Sian",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Rigoberta Meija Sian is gedreven pleitbezorger van inclusieve kinderboeken: boeken waarin álle kinderen zichzelf kunnen herkennen. In haar workshop ontdek je de kracht van diverse verhalen en hoe je ze inzet in de klas. Samen met Geert Vermeegen verzorgt ze ook de Leesclub van leesbevorderaars.",
+   "bronnen": []
+  },
+  {
+   "naam": "Aurora Smit",
+   "zoek": "Aurora Smit",
+   "organisatie": "Team Taal & Cultuur",
+   "status": "bron",
+   "bio": "Aurora Smit is trainer en coach bij Team Taal & Cultuur, met expertise op het gebied van taal, meertaligheid en burgerschap. Ze deelt haar kennis onder meer op studiedagen van LOWAN, het ondersteuningsnetwerk voor nieuwkomersonderwijs. Op dit congres verzorgt ze twee workshops: over rijke teksten voor nieuwkomers en over de inzet van de thuistaal – praktisch, warm en deskundig.",
+   "bronnen": [
+    "https://www.lowan.nl/wp-content/uploads/2025/12/sterk-start-rdam.pdf"
+   ]
+  },
+  {
+   "naam": "Jantien Dhont",
+   "zoek": "Jantien Dhont",
+   "organisatie": "SLO",
+   "status": "concept",
+   "bio": "Jantien Dhont is verbonden aan SLO, het nationaal expertisecentrum leerplanontwikkeling. In haar workshop gaat ze aan de slag met schrijven in groep 1-2-3 en laat ze zien hoe je jonge kinderen al vroeg laat ervaren hoe leuk en betekenisvol schrijven is. Samen met Katinka de Croon verzorgt ze ook een sessie over kerndoel 6.",
+   "bronnen": []
+  },
+  {
+   "naam": "Katinka de Croon",
+   "zoek": "Katinka de Croon",
+   "organisatie": "SLO",
+   "status": "concept",
+   "bio": "Katinka de Croon is verbonden aan SLO, het nationaal expertisecentrum leerplanontwikkeling. Zij laat zien hoe rijke teksten de brug slaan tussen taal en burgerschap, en hoe je zo de horizon van leerlingen verbreedt. Samen met Jantien Dhont verzorgt ze ook een sessie over betekenisvol taalonderwijs en taalplezier met kerndoel 6.",
+   "bronnen": []
+  },
+  {
+   "naam": "Gertrud Cornelissen",
+   "zoek": "Gertrud Cornelissen",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Gertrud Cornelissen is specialist in literaire gesprekken met kinderen. In haar twee workshops – voor de onderbouw en voor alle groepen – ervaar je hoe je leerlingen uitnodigt om echt over boeken te praten, te verwonderen en betekenis te geven aan wat ze lezen.",
+   "bronnen": []
+  },
+  {
+   "naam": "Geert Vermeegen",
+   "zoek": "Geert Vermeegen",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Geert Vermeegen zet zich met hart en ziel in voor leesbevordering. Samen met Rigoberta Meija Sian verzorgt hij de Leesclub van leesbevorderaars: een inspirerende bijeenkomst om ervaringen, titels en ideeën te delen.",
+   "bronnen": []
+  },
+  {
+   "naam": "Bibliotheek Rotterdam",
+   "zoek": "Bibliotheek Rotterdam",
+   "organisatie": "Bibliotheek Rotterdam",
+   "status": "concept",
+   "bio": "De Bibliotheek Rotterdam is dé partner van scholen als het gaat om lezen en leesplezier. Met hun deskundige leesconsulenten verzorgen ze op dit congres workshops over rijk taalonderwijs in de onderbouw en over jeugdliteratuur in alle vakken.",
+   "bronnen": []
+  },
+  {
+   "naam": "Mariëlle Laan",
+   "zoek": "Mariëlle Laan",
+   "organisatie": "Hogeschool Rotterdam",
+   "status": "concept",
+   "bio": "Mariëlle Laan (Hogeschool Rotterdam) laat zien hoe je samen taal versterkt met Staalwerk – voor ieder kind. Een workshop vol praktische handvatten.",
+   "bronnen": []
+  },
+  {
+   "naam": "Linda Maan",
+   "zoek": "Linda Maan",
+   "organisatie": "Hogeschool Rotterdam",
+   "status": "concept",
+   "bio": "Linda Maan (Hogeschool Rotterdam) vertelt over **Thuis in Taal**: de aanpak van Hogeschool Rotterdam waarin school en ouders samen werken aan de taalontwikkeling van jonge kinderen. Thuis in Taal werkt met zeven onderzochte stappen en wordt op tientallen scholen in en rond Rotterdam toegepast.",
+   "bronnen": [
+    "https://www.hogeschoolrotterdam.nl/contentassets/a0c9c0bc0f7942be8a01e80844b8e2d1/thuis-in-taal-in-een-notendop-2018-def.pdf"
+   ]
+  },
+  {
+   "naam": "Rianne Niet",
+   "zoek": "Rianne Niet",
+   "organisatie": "Hogeschool Rotterdam",
+   "status": "concept",
+   "bio": "Rianne Niet (Hogeschool Rotterdam) laat zien hoe je samen met ouders een kansrijke context creëert voor ieder kind. Een workshop voor iedereen die ouderbetrokkenheid en taalontwikkeling wil versterken.",
+   "bronnen": []
+  },
+  {
+   "naam": "Martine en Jet",
+   "zoek": "Martine en Jet",
+   "organisatie": "Hogeschool Rotterdam",
+   "status": "concept",
+   "bio": "Martine en Jet van Hogeschool Rotterdam nemen je mee in hoe je *taal geeft aan het jonge kind*: hoe je met rijk taalaanbod de taalontwikkeling van de allerjongsten versterkt.",
+   "bronnen": []
+  },
+  {
+   "naam": "Tissie Spiering",
+   "zoek": "Tissie Spiering",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Tissie Spiering verzorgt een compacte kennissessie over betekenisvol taalonderwijs: in een half uur de kern, met inzichten die je direct kunt toepassen.",
+   "bronnen": []
+  },
+  {
+   "naam": "Shirley van der Meer",
+   "zoek": "Shirley van der Meer",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Shirley van der Meer deelt in haar kennissessie haar ervaring met schrijfvaardigheid in het speciaal basisonderwijs: hoe help je juist deze leerlingen om met plezier en succes te schrijven?",
+   "bronnen": []
+  },
+  {
+   "naam": "Marco Petersen",
+   "zoek": "Marco Petersen",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Marco Petersen verkent in zijn kennissessie de verbinding tussen pedagogiek en taalgebruik: hoe de taal die jij als leraar gebruikt het klimaat in de klas en het leren van kinderen kleurt.",
+   "bronnen": []
+  },
+  {
+   "naam": "Ricky Doornbos",
+   "zoek": "Ricky Doornbos",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Ricky Doornbos laat in zijn kennissessie zien hoe thematisch taalonderwijs werkt: taal leren in samenhang, rond thema's die kinderen boeien.",
+   "bronnen": []
+  },
+  {
+   "naam": "Pim Helm",
+   "zoek": "Pim Helm",
+   "organisatie": "Thomas More Hogeschool",
+   "status": "controleren",
+   "bio": "Pim van der Helm is docent geschiedenis aan de Thomas More Hogeschool in Rotterdam, waar hij toekomstige leraren basisonderwijs opleidt. Sinds 2024 doet hij promotieonderzoek aan de Universiteit Leiden naar **literatuurhistorisch redeneren** op de basisschool – een benadering die bijdraagt aan geletterdheid, historisch besef en burgerschapsvorming. Een unieke kans om kennis te maken met vernieuwend onderzoek uit de eigen regio.",
+   "bronnen": [
+    "https://www.universiteitleiden.nl/medewerkers/pim-van-der-helm"
+   ]
+  },
+  {
+   "naam": "Anne de Klerk",
+   "zoek": "Anne de Klerk",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Anne de Klerk laat zien hoe je rijke teksten inzet in de wereldoriëntatievakken, zodat leerlingen tegelijk kennis opdoen én hun taalvaardigheid versterken.",
+   "bronnen": []
+  },
+  {
+   "naam": "Anne Kool",
+   "zoek": "Anne Kool",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Anne Kool neemt je in haar interactieve lezing mee in de wereld van graphic novels: de kracht van beeld en tekst samen, en hoe je dit genre inzet om (ook aarzelende) lezers te enthousiasmeren.",
+   "bronnen": []
+  },
+  {
+   "naam": "Marlon Ruwette",
+   "zoek": "Marlon Ruwette",
+   "organisatie": "Hogeschool Rotterdam",
+   "status": "bron",
+   "bio": "Marlon Ruwette is sinds 2012 verbonden aan het Kenniscentrum Urban Talent van Hogeschool Rotterdam, waar ze promotieonderzoek doet naar leesbevordering in het basisonderwijs. Ze studeerde Nederlandse taal en cultuur aan de Universiteit Leiden en aan University College London. In haar workshop *Taalbewust leren* deelt ze kennis die stevig in onderzoek is geworteld.",
+   "bronnen": [
+    "https://www.rotterdamuas.com/research/professors/urban-talent/phd-candidates/ruwette-marlon/"
+   ]
+  },
+  {
+   "naam": "Mariska Daalhuizen",
+   "zoek": "Mariska Daalhuizen",
+   "organisatie": "Gouden Griffel",
+   "status": "concept",
+   "bio": "Mariska Daalhuizen vertelt in haar kennissessie over de literaire basisschool: hoe maak je van jouw school een plek waar literatuur en leesplezier centraal staan?",
+   "bronnen": []
+  },
+  {
+   "naam": "Joanneke Prenger",
+   "zoek": "Joanneke Prenger",
+   "organisatie": "SLO",
+   "status": "bron",
+   "bio": "Joanneke Prenger is curriculumexpert bij SLO en stond mede aan de basis van de nieuwe (concept)kerndoelen Nederlands. Ze pleit voor kerndoelen die leraren concrete houvast geven en benadrukt dat kerndoelen gaan over het aanbod dat leerlingen verdienen – niet over toetsdoelen. Niemand kan je beter meenemen in hoe je je taalonderwijs versterkt vanuit de nieuwe kerndoelen.",
+   "bronnen": [
+    "https://slo.nl/publish/pages/22236/definitieve-conceptkerndoelen-nederlands-toelichtingsdocument.pdf",
+    "https://bestanden.cedgroep.nl/production/Handouts-kbl-2023/Conferentie-Kenniscentrum-Begrijpend-Lezen-2023-Op-weg-naar-effectief-taalonderwijs-Workshop-Joanneke-Prenger.pdf"
+   ]
+  },
+  {
+   "naam": "Marcel van Herpen",
+   "zoek": "Marcel van Herpen",
+   "organisatie": "",
+   "status": "bron",
+   "bio": "Marcel van Herpen is een veelgevraagd spreker en trainer op het gebied van pedagogische tact. Hij laat zien dat goed pedagogisch handelen draait om timing en aanwezigheid – iets wat je niet uit een handboek leert. In zijn lezing *Weten wat je moet doen, als je niet weet wat je moet doen* geeft hij leraren taal en houvast voor precies die lastige momenten in de klas.",
+   "bronnen": [
+    "https://www.cnv.nl/onderwijs/schoolleiders/nieuws/terugblik-webinar-marcel-van-herpen/",
+    "https://nivoz.nl/uploads/2016/04/marcel-in-magazine-nr-3-v16.pdf"
+   ]
+  },
+  {
+   "naam": "Buro Schoolwerk",
+   "zoek": "Buro Schoolwerk",
+   "organisatie": "Buro Schoolwerk",
+   "status": "concept",
+   "bio": "Buro Schoolwerk verzorgt praktijkgerichte trainingen voor onderwijsprofessionals. Op dit congres staan onder meer *Je bokst zoals je bent*, *Communicatie met ouders*, *OOP telt mee*, *Als het botst op het schoolplein* en *Waarom doet ie zo?* op het programma: trainingen waarin je direct oefent met situaties uit de schoolpraktijk.",
+   "bronnen": []
+  },
+  {
+   "naam": "Karen Heij",
+   "zoek": "Karen Heij",
+   "organisatie": "",
+   "status": "bron",
+   "bio": "Karen Heij is expert op het snijvlak van toetsing en onderwijs. Zij onderzoekt hoe toetsen en onderwijs elkaar beïnvloeden en kijkt kritisch naar wat decennia van eindtoetsen ons hebben gebracht – en wat dat betekent voor taal in het curriculum. Een lezing die je aan het denken zet over toetsing, taal en het nieuwe curriculum.",
+   "bronnen": [
+    "https://s3-eu-west-3.amazonaws.com/vlor-prd/attachment/VLOR_Seminarie%20Karen%20Heij.pdf"
+   ]
+  },
+  {
+   "naam": "Martin Bootsma",
+   "zoek": "Martin Bootsma",
+   "organisatie": "Alan Turingschool",
+   "status": "bron",
+   "bio": "Martin Bootsma is leerkracht en teamleider van de Alan Turingschool in Amsterdam, die hij in 2016 samen met Eva Naaijkens oprichtte. Met bijna dertig jaar ervaring in het primair onderwijs staat hij bekend om zijn expertise in leesonderwijs. Hij is mede-eigenaar van Enigma Onderwijs en partner in het Education Lab. In 2025 hield hij de prestigieuze **Kohnstammlezing**, waarin hij pleitte voor samenhangend taalonderwijs binnen kennisrijk onderwijs.",
+   "bronnen": [
+    "https://www.uva.nl/content/evenementen/2025/03/martin-bootsma-houdt-kohnstammlezing-2025.html"
+   ]
+  },
+  {
+   "naam": "Auris",
+   "zoek": "Auris",
+   "organisatie": "Auris",
+   "status": "bron",
+   "bio": "Auris is dé expertiseorganisatie voor kinderen en jongeren met een taalontwikkelingsstoornis (TOS) of slechthorendheid. Ruim 2.000 professionals bieden onderwijs, zorg en begeleiding, ook aan leerlingen met TOS in het reguliere onderwijs. In de sessie *Ervaar TOS* beleef je zelf hoe het is als taal niet vanzelf gaat – een eyeopener voor iedere leerkracht.",
+   "bronnen": [
+    "https://auris.nl/wp-content/uploads/20190702-flyer-missie-visie-kernwaarden-en-doelstellingen.pdf",
+    "https://auris.nl/wp-content/uploads/informatie-taalontwikkelingsstoornis-2025-1.pdf"
+   ]
+  },
+  {
+   "naam": "Hans Stroes",
+   "zoek": "Hans Stroes",
+   "organisatie": "",
+   "status": "bron",
+   "bio": "Hans Stroes is pleitbezorger van goed handschriftonderwijs. Samen met Marjon van Sambeek verzorgde hij het webinar *Vernieuwd handschriftonderwijs* en hij publiceerde hierover in het vakblad Taal. In zijn workshop *Handschrift hoort bij taal* laat hij zien waarom schrijven met de hand onmisbaar is voor taalontwikkeling – en hoe je het slim en effectief aanpakt.",
+   "bronnen": [
+    "https://lowan.nl/wp-content/uploads/2024/11/49.-Vernieuwend-handschriftonderwijs-aan-nieuwkomers.pdf"
+   ]
+  },
+  {
+   "naam": "Montessori Movement",
+   "zoek": "Montessori Movement",
+   "organisatie": "Montessori Movement",
+   "status": "concept",
+   "bio": "Montessori Movement neemt je mee *van boerderij tot zinsontleding*: een workshop waarin je ervaart hoe montessorimaterialen taal tastbaar en begrijpelijk maken voor kinderen.",
+   "bronnen": []
+  },
+  {
+   "naam": "Leesdetectives",
+   "zoek": "Leesdetectives",
+   "organisatie": "Leesdetectives",
+   "status": "concept",
+   "bio": "De Leesdetectives verzorgen een interactieve leesquiz waarin je samen met andere congresdeelnemers je kennis van (kinder)boeken test. Speels, verrassend en vol inspiratie voor je eigen klas.",
+   "bronnen": []
+  },
+  {
+   "naam": "Shirma Rous",
+   "zoek": "Shirma Rous",
+   "organisatie": "",
+   "status": "controleren",
+   "bio": "Shirma Rouse is een veelzijdige Nederlandse zangeres die op Curaçao werd geboren en op haar negentiende naar Rotterdam verhuisde. Ze werd bekend uit The Voice of Holland, zong achtergrondvocalen voor onder anderen Anouk, Candy Dulfer en Henny Vrienten en maakte furore met haar theatershow *Shirma sings Aretha*. In *Zingen en swingen* laat ze zien hoe muziek en taal elkaar versterken – energie gegarandeerd!",
+   "bronnen": [
+    "https://en.wikipedia.org/wiki/Shirma_Rouse"
+   ]
+  },
+  {
+   "naam": "Hanna Kuijs",
+   "zoek": "Hanna Kuijs",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Hanna Kuijs verzorgt drie interactieve lezingen over lezen in meertalige klassen: over scaffoldend voorlezen, over het beter benutten van vrij lezen (met inzichten uit de leesprogramma's LIST en LeesLab) en over gesprekken voeren om te leren. Ideaal voor wie werkt met een taalrijke, diverse groep.",
+   "bronnen": []
+  },
+  {
+   "naam": "SKVR",
+   "zoek": "SKVR",
+   "organisatie": "SKVR",
+   "status": "bron",
+   "bio": "SKVR is dé basisvoorziening voor kunsteducatie in Rotterdam en verbindt zoveel mogelijk Rotterdammers met kunst en cultuur. SKVR-docenten geven wekelijks kunst- en cultuurlessen op tientallen Rotterdamse scholen. Op dit congres verzorgen ze de workshops *Nederhop meets classical music*, *Presenteren kan je leren* en *dansTaal* – waarin taal, muziek en beweging samenkomen.",
+   "bronnen": [
+    "https://skvr.nl/sites/default/files/2026-05/Highlights%20SKVR-jaarverslag%202025.pdf"
+   ]
+  },
+  {
+   "naam": "Remko Appel",
+   "zoek": "Remko Appel",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Remko Appel brengt beweging in het taalonderwijs. In *De terugkeer van de spelles: taal in beweging* ervaar je hoe spel en beweging het leren van taal versterken – en kinderen laten stralen.",
+   "bronnen": []
+  },
+  {
+   "naam": "Harriet Robijn",
+   "zoek": "Harriet Robijn",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Harriet Robijn laat in haar workshop *Tekenen in de klas* zien hoe tekenen een krachtig leermiddel is, ook bij taal: wie tekent, kijkt beter, denkt dieper na en vertelt rijker.",
+   "bronnen": []
+  },
+  {
+   "naam": "Lara Sitton",
+   "zoek": "Lara Sitton",
+   "organisatie": "De Bergse Zonnebloem",
+   "status": "concept",
+   "bio": "Lara Sitton werkt op De Bergse Zonnebloem, een openbare basisschool in Rotterdam. In haar workshop *Lees je rot* deelt ze hoe je leesplezier aanwakkert bij kinderen – recht uit de praktijk.",
+   "bronnen": []
+  },
+  {
+   "naam": "Merlijn Wentzel",
+   "zoek": "Merlijn Wentzel",
+   "organisatie": "Taalvorming",
+   "status": "bron",
+   "bio": "Merlijn Wentzel is verbonden aan Taalvorming en deelt zijn kennis onder meer op studiedagen van LOWAN. Hij is ambassadeur van **de taalronde**: een zorgvuldig opgebouwde reeks activiteiten die begint met een gesprek en eindigt met een tekst, met de eigen ervaringen van kinderen als vertrekpunt. Zijn overtuiging: ieder kind kan leren schrijven.",
+   "bronnen": [
+    "https://www.lowan.nl/wp-content/uploads/2023/04/PPT-LOWAN-studiedag-28-en-29-maart-2.pdf"
+   ]
+  },
+  {
+   "naam": "Caroline Plomp",
+   "zoek": "Caroline Plomp",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Caroline Plomp laat zien hoe de dialoog een krachtig instrument is voor leren én verbinden. Samen met Ilham Oujerouaou verzorgt ze ook een workshop over schrijfvaardigheid in de overgang van po naar vo.",
+   "bronnen": []
+  },
+  {
+   "naam": "Ilham Oujerouaou",
+   "zoek": "Ilham Oujerouaou",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Ilham Oujerouaou verzorgt samen met Caroline Plomp de workshop *Schrijfvaardigheid ontwikkelen (van po naar vo)*: hoe bouw je een doorgaande lijn in schrijven, zodat leerlingen goed voorbereid de overstap maken?",
+   "bronnen": []
+  },
+  {
+   "naam": "Wendy van der Aa",
+   "zoek": "Wendy van der Aa",
+   "organisatie": "",
+   "status": "concept",
+   "bio": "Wendy van der Aa verzorgt de masterclass *Taal als sleutel tot de wereld*: een verdiepende sessie voor wie al stevig in het onderwerp zit en een stap verder wil.",
+   "bronnen": []
+  },
+  {
+   "naam": "Lauren van Mulligen",
+   "zoek": "Lauren van Mulligen",
+   "organisatie": "Spelen met Engels",
+   "status": "concept",
+   "bio": "Lauren van Mulligen van Spelen met Engels laat zien hoe Engels op de basisschool speels en effectief kan. In twee workshops deelt ze werkvormen voor woordenschat en *de schijf van vijf* voor je Engelse lessen.",
+   "bronnen": []
+  },
+  {
+   "naam": "Bazalt",
+   "zoek": "Bazalt",
+   "organisatie": "Bazalt",
+   "status": "bron",
+   "bio": "Bazalt biedt training, coaching, advies en educatieve uitgaven voor onderwijs en kinderopvang. Bazalt bracht onder meer de Nederlandse editie uit van *Leren zichtbaar maken* van John Hattie. In de workshop *Zien is snappen* ontdek je hoe visualiseren het leren ondersteunt.",
+   "bronnen": [
+    "https://bibliotheek.nl/catalogus/titel.383300487.html/leren-zichtbaar-maken"
+   ]
+  }
  ]
 };

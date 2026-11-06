@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amaranth:ital,wght@0,400;0,700;1,400&display=swap">
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <header class="topbar">
@@ -15,6 +15,7 @@
     <nav class="tabs" role="tablist">
       <button data-view="grid">Blokkenschema</button>
       <button data-view="list">Alle sessies</button>
+      <button data-view="sprekers">Sprekers</button>
       <button data-view="my">Mijn schema <span class="count" id="mycount">0</span></button>
       <button data-view="beheer" class="only-editor">Beheer</button>
     </nav>
@@ -91,6 +92,8 @@
       </div>
     </section>
 
+    <section id="view-sprekers" class="view"></section>
+
     <section id="view-beheer" class="view"></section>
   </main>
 
@@ -102,8 +105,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-  <script src="programma.js?v=3"></script>
+  <script src="programma.js?v=5"></script>
   <script src="cloud.js?v=3"></script>
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
