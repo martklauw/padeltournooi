@@ -37,6 +37,13 @@
         ".write": "auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'eigenaar@gmail.com' || root.child('congresBeheer').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && $key == auth.token.email.toLowerCase().replace('.', ',')",
         ".validate": "newData.val() == now"
       }
+    },
+    "congresMedia": {
+      "$id": {
+        ".read": true,
+        ".write": "auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'eigenaar@gmail.com' || root.child('congresBeheer').child(auth.token.email.toLowerCase().replace('.', ',')).exists())",
+        ".validate": "!newData.exists() || (newData.isString() && newData.val().beginsWith('data:image/') && newData.val().length < 400000)"
+      }
     }
   }
 }

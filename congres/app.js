@@ -50,7 +50,7 @@
       return {
         ...s, start, eind, duur: eind - start, cap: cap[s.zaal],
         key: norm(s.titel + '|' + s.spreker),
-        zoek: norm([s.titel, s.type, s.spreker, s.zaal, s.beschrijving].join(' ')),
+        zoek: norm([s.titel, s.type, s.spreker, s.zaal, s.samenvatting, s.beschrijving, s.doelgroep].join(' ')),
       };
     }).sort((a, b) => a.start - b.start || (zaalIdx[a.zaal] ?? 99) - (zaalIdx[b.zaal] ?? 99));
     BY_ID = Object.fromEntries(SESSIES.map(s => [s.id, s]));
@@ -187,6 +187,8 @@
         <h3><button data-open="${s.id}">${esc(s.titel)}</button></h3>
         <div class="meta"><span>🕒 ${fmt(s.start)}–${fmt(s.eind)} (${s.duur} min)</span><span>📍 ${esc(s.zaal)}${s.cap ? ` · ${s.cap} pl.` : ''}</span></div>
         <div class="meta"><span>👤 ${esc(s.spreker)}</span></div>
+        ${s.samenvatting ? `<p class="summary">${esc(s.samenvatting)}</p>` : ''}
+        ${s.fotoId || s.video ? `<div class="meta">${s.fotoId ? '<span>📷 Met foto</span>' : ''}${s.video ? '<span>🎬 Met video</span>' : ''}</div>` : ''}
         ${herhaling.length ? `<div class="meta"><span>🔁 Ook om ${herhaling.map(h => fmt(h.start)).join(', ')}</span></div>` : ''}
         ${b.length ? `<div class="warn">⚠️ Botst met: ${b.map(x => esc(x.titel)).join(', ')}</div>` : ''}
         <div class="actions">${knop(s)}<button class="linkbtn" data-open="${s.id}">Meer info</button></div>
@@ -268,13 +270,18 @@
         <h2>${esc(s.titel)}</h2>
         <button class="m-close" data-close aria-label="Sluiten">✕</button>
       </div>
+      ${s.fotoId ? '<div class="m-photo" id="mFoto"><div class="photo-ph"></div></div>' : ''}
       <div class="m-body">
         <dl class="facts">
           <dt>Tijd</dt><dd>${fmt(s.start)} – ${fmt(s.eind)} uur (${s.duur} minuten)</dd>
           <dt>Zaal</dt><dd>${esc(s.zaal)}${s.cap ? ` · ${s.cap} plaatsen` : ''}</dd>
           <dt>Door</dt><dd>${esc(s.spreker)}</dd>
         </dl>
-        ${s.beschrijving ? `<p class="descr">${esc(s.beschrijving)}</p>` : ''}
+        ${s.samenvatting ? `<p class="lead">${esc(s.samenvatting)}</p>` : ''}
+        ${s.beschrijving ? `<div class="rich">${opmaak(s.beschrijving)}</div>` : ''}
+        ${s.doelgroep ? `<h4>Voor wie</h4><div class="rich">${opmaak(s.doelgroep)}</div>` : ''}
+        ${videoEmbed(s.video) ? `<h4>Video</h4><div class="video"><iframe src="${esc(videoEmbed(s.video))}" title="Video bij ${esc(s.titel)}" loading="lazy" allow="fullscreen; picture-in-picture; encrypted-media" allowfullscreen></iframe></div>` : ''}
+        ${s.sprekerInfo ? `<h4>Over ${esc(s.spreker)}</h4><div class="rich">${opmaak(s.sprekerInfo)}</div>` : ''}
         ${info.uitleg ? `<p class="hint"><b>Wat is een ${esc(s.type.toLowerCase())}?</b> ${esc(info.uitleg)}</p>` : ''}
         ${b.length ? `<div class="clashbox">⚠️ Deze sessie overlapt met je keuze: <b>${b.map(x => esc(x.titel) + ` (${fmt(x.start)}–${fmt(x.eind)})`).join(', ')}</b>.
            <div style="margin-top:8px"><button class="btn pink" data-replace="${s.id}">Vervang door deze sessie</button></div></div>` : ''}
@@ -284,7 +291,99 @@
         ${anderen.length ? `<h4>Deze sessie wordt ook gegeven om</h4>${anderen.map(altRij).join('')}` : '<h4>Eenmalig</h4><p class="hint">Deze sessie wordt maar één keer gegeven.</p>'}
         ${zelfdeSpreker.length ? `<h4>Meer van ${esc(s.spreker)}</h4>${zelfdeSpreker.map(altRij).join('')}` : ''}
       </div>`;
+    $('#modal').classList.remove('wide');
     if (!$('#modal').open) $('#modal').showModal();
+    if (s.fotoId) loadFoto(s.fotoId).then(src => {
+      const el = $('#mFoto');
+      if (!el || openId !== id) return;
+      if (src) el.innerHTML = `<img src="${src}" alt="${esc(s.fotoAlt || s.titel)}">`;
+      else el.remove();
+    });
+  }
+
+  /* ===================== Uitleg: opmaak, foto's en video ===================== */
+  // Eenvoudige opmaak: lege regel = nieuwe alinea, regels met "- " = opsomming, **vet**, links worden klikbaar.
+  function opmaak(t) {
+    const inline = x => esc(x)
+      .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+      .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+    const isItem = r => /^\s*[-•*]\s+/.test(r);
+    return String(t || '').trim().split(/\n\s*\n/).map(blok => {
+      // Opeenvolgende "- "-regels worden een lijst; overige regels een alinea.
+      let html = '', tekst = [], items = [];
+      const flush = () => {
+        if (tekst.length) html += '<p>' + tekst.map(inline).join('<br>') + '</p>';
+        if (items.length) html += '<ul>' + items.map(r => '<li>' + inline(r.replace(/^\s*[-•*]\s+/, '')) + '</li>').join('') + '</ul>';
+        tekst = []; items = [];
+      };
+      for (const r of blok.split('\n')) {
+        if (isItem(r)) { if (tekst.length) { html += '<p>' + tekst.map(inline).join('<br>') + '</p>'; tekst = []; } items.push(r); }
+        else { if (items.length) flush(); tekst.push(r); }
+      }
+      flush();
+      return html;
+    }).join('');
+  }
+
+  // YouTube- of Vimeo-link omzetten naar een insluitlink (YouTube zonder tracking-cookies).
+  function videoEmbed(url) {
+    if (!url) return null;
+    try {
+      const u = new URL(url);
+      const h = u.hostname.replace(/^(www|m)\./, '');
+      let id = null;
+      if (h === 'youtu.be') id = u.pathname.slice(1);
+      else if (h.endsWith('youtube.com') || h.endsWith('youtube-nocookie.com')) id = u.searchParams.get('v') || (u.pathname.match(/^\/(shorts|embed|live)\/([\w-]+)/) || [])[2];
+      if (id && /^[\w-]{6,}$/.test(id)) return `https://www.youtube-nocookie.com/embed/${id}`;
+      if (h === 'vimeo.com' || h === 'player.vimeo.com') { const m = u.pathname.match(/(\d{5,})/); if (m) return `https://player.vimeo.com/video/${m[1]}`; }
+    } catch (e) { /* geen geldige link */ }
+    return null;
+  }
+
+  // Foto's staan los van het programma in /congresMedia/{id} en worden pas geladen als iemand de sessie opent.
+  const fotoCache = {};
+  const MEDIA_KEY = id => 'rtc-congres-media-' + id;
+  function loadFoto(id) {
+    if (!id) return Promise.resolve(null);
+    if (!fotoCache[id]) fotoCache[id] = (Cloud.enabled ? Cloud.getMedia(id) : Promise.resolve(localStorage.getItem(MEDIA_KEY(id)))).catch(() => null);
+    return fotoCache[id];
+  }
+  function saveFoto(id, src) {
+    fotoCache[id] = Promise.resolve(src);
+    if (Cloud.enabled) return Cloud.setMedia(id, src);
+    try { localStorage.setItem(MEDIA_KEY(id), src); return Promise.resolve(); } catch (e) { return Promise.reject(new Error('De browseropslag is vol')); }
+  }
+  function removeFoto(id) {
+    delete fotoCache[id];
+    if (Cloud.enabled) return Cloud.setMedia(id, null);
+    localStorage.removeItem(MEDIA_KEY(id)); return Promise.resolve();
+  }
+  // Foto's die door geen enkele sessie meer worden gebruikt opruimen.
+  function opruimenFotos(ids) {
+    [...new Set(ids)].filter(id => id && !data.sessies.some(s => s.fotoId === id)).forEach(id => removeFoto(id).catch(() => {}));
+  }
+
+  // Afbeelding verkleinen en comprimeren tot een JPEG van hooguit ~250 kB.
+  function comprimeer(file) {
+    return new Promise((res, rej) => {
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(img.src);
+        for (const max of [1400, 1200, 1000, 800, 640]) {
+          const sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
+          const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+          for (const q of [0.82, 0.72, 0.62, 0.52]) {
+            const out = c.toDataURL('image/jpeg', q);
+            if (out.length < 340000) return res(out);
+          }
+        }
+        rej(new Error('De foto is te groot om te verkleinen'));
+      };
+      img.onerror = () => rej(new Error('Dit bestand is geen afbeelding die de browser kan lezen'));
+      img.src = URL.createObjectURL(file);
+    });
   }
 
   /* ===================== Beheer ===================== */
@@ -327,7 +426,7 @@
           </div>
           <div class="tbl-scroll">
             <table class="tbl">
-              <thead><tr><th>Tijd</th><th>Zaal</th><th>Titel</th><th>Type</th><th>Spreker</th><th>Info</th><th></th></tr></thead>
+              <thead><tr><th>Tijd</th><th>Zaal</th><th>Titel</th><th>Type</th><th>Spreker</th><th>Uitleg</th><th></th></tr></thead>
               <tbody>${lijst.map(s => `
                 <tr>
                   <td class="nowrap">${fmt(s.start)}–${fmt(s.eind)}</td>
@@ -335,7 +434,7 @@
                   <td><b>${esc(s.titel)}</b></td>
                   <td class="nowrap"><span class="swatch" style="${kleurVars(s.type)}"></span>${esc(s.type)}</td>
                   <td>${esc(s.spreker)}</td>
-                  <td>${s.beschrijving ? '✓' : '<span class="hint">–</span>'}</td>
+                  <td class="nowrap" title="Uitleg / foto / video">${[s.samenvatting || s.beschrijving ? '📝' : '', s.fotoId ? '📷' : '', s.video ? '🎬' : ''].join(' ').trim() || '<span class="hint">–</span>'}</td>
                   <td class="nowrap"><button class="btn small ghost" data-edit="${s.id}">Bewerken</button>
                     <button class="icon-btn" data-del="${s.id}" title="Verwijderen">✕</button></td>
                 </tr>`).join('') || '<tr><td colspan="7" class="empty">Geen sessies.</td></tr>'}
@@ -420,15 +519,24 @@
       .catch(e => alert('Toevoegen is niet gelukt: ' + e.message));
   }
 
+  const UITLEG_VELDEN = ['samenvatting', 'beschrijving', 'doelgroep', 'sprekerInfo', 'video', 'fotoId', 'fotoAlt'];
+  let editFoto = null; // null = ongewijzigd, 'weg' = verwijderen, anders de nieuwe foto (data-URL)
+
   function openEditor(id, kopie = false) {
     const bron = id ? data.sessies.find(s => s.id === id) : null;
-    const s = bron ? { ...bron } : { id: '', zaal: data.zalen[0]?.naam || '', start: '11:00', eind: '12:00', titel: '', type: data.typen[0]?.naam || '', spreker: '', beschrijving: '' };
+    const leeg = { id: '', zaal: data.zalen[0]?.naam || '', start: '11:00', eind: '12:00', titel: '', type: data.typen[0]?.naam || '', spreker: '' };
+    const s = { ...leeg, ...Object.fromEntries(UITLEG_VELDEN.map(k => [k, ''])), ...(bron || {}) };
     if (kopie) s.id = '';
+    editFoto = null;
     openId = null;
+    const sleutel = x => norm(x.titel + '|' + x.spreker);
+    const zusjes = bron ? data.sessies.filter(x => x.id !== bron.id && sleutel(x) === sleutel(bron)) : [];
     $('#modal-content').innerHTML = `
       <form id="editForm" class="m-body" style="padding-top:22px" novalidate>
         <div class="card-head"><h2 style="margin:0">${s.id ? 'Sessie bewerken' : kopie ? 'Sessie op een ander tijdstip' : 'Nieuwe sessie'}</h2>
           <button type="button" class="m-close" data-close aria-label="Sluiten" style="position:static">✕</button></div>
+
+        <h3 class="ed-h">Praktisch</h3>
         <label class="field">Titel<input type="text" name="titel" required value="${esc(s.titel)}"></label>
         <div class="two">
           <label class="field">Type<select name="type">${data.typen.map(t => `<option ${t.naam === s.type ? 'selected' : ''}>${esc(t.naam)}</option>`).join('')}</select></label>
@@ -439,52 +547,118 @@
           <label class="field">Eindtijd<input type="time" name="eind" step="300" required value="${esc(s.eind.padStart(5, '0'))}"></label>
         </div>
         <label class="field">Spreker / organisatie<input type="text" name="spreker" value="${esc(s.spreker)}"></label>
-        <label class="field">Beschrijving voor bezoekers<textarea name="beschrijving" rows="5" placeholder="Waar gaat de sessie over, voor wie is hij bedoeld en wat neem je mee?">${esc(s.beschrijving)}</textarea></label>
+
+        <h3 class="ed-h">Uitleg voor bezoekers</h3>
+        <label class="field">Korte samenvatting <small class="hint">(1–2 zinnen, zichtbaar in het overzicht)</small>
+          <textarea name="samenvatting" rows="2" maxlength="300" style="min-height:0">${esc(s.samenvatting)}</textarea></label>
+        <label class="field">Uitgebreide beschrijving
+          <textarea name="beschrijving" rows="8" placeholder="Waar gaat de sessie over, hoe ziet hij eruit en wat neem je mee naar je klas?">${esc(s.beschrijving)}</textarea>
+          <small class="hint">Opmaak: lege regel = nieuwe alinea · regel beginnen met "- " = opsomming · **vet** · links worden klikbaar.</small></label>
+        <label class="field">Voor wie is deze sessie? <textarea name="doelgroep" rows="2" style="min-height:0" placeholder="Bijvoorbeeld: leerkrachten groep 1-3, intern begeleiders">${esc(s.doelgroep)}</textarea></label>
+        <label class="field">Over de spreker <textarea name="sprekerInfo" rows="3" style="min-height:0">${esc(s.sprekerInfo)}</textarea></label>
+
+        <h3 class="ed-h">Foto en video</h3>
+        <div class="media-edit">
+          <div class="foto-preview" id="fotoPreview"><span class="hint">Geen foto</span></div>
+          <div>
+            <label class="btn ghost small" style="cursor:pointer">📷 Foto kiezen<input type="file" id="fotoInput" accept="image/*" hidden></label>
+            <button type="button" class="btn ghost small danger" id="fotoWeg" ${s.fotoId ? '' : 'hidden'}>Foto verwijderen</button>
+            <p class="hint" style="margin-top:6px">JPG of PNG. Grote foto's worden automatisch verkleind. Gebruik alleen foto's waarvoor toestemming is (AVG).</p>
+            <label class="field">Omschrijving van de foto <small class="hint">(voor schermlezers)</small><input type="text" name="fotoAlt" value="${esc(s.fotoAlt)}"></label>
+          </div>
+        </div>
+        <label class="field">Video <small class="hint">(link naar YouTube of Vimeo)</small><input type="url" name="video" placeholder="https://www.youtube.com/watch?v=…" value="${esc(s.video)}"></label>
+        <div id="videoCheck" class="hint"></div>
+
+        ${zusjes.length ? `<label class="switch" style="margin:10px 0"><input type="checkbox" name="sync" checked>
+          Uitleg, foto en video ook gebruiken voor ${zusjes.length === 1 ? 'het andere tijdstip' : `de ${zusjes.length} andere tijdstippen`} van deze sessie (${zusjes.map(z => z.start).join(', ')})</label>` : ''}
         <p class="warn" id="editWarn"></p>
         <div class="inline" style="justify-content:space-between">
           <div class="inline">
-            <button type="submit" class="btn primary">Opslaan</button>
+            <button type="submit" class="btn primary" id="editSave">Opslaan</button>
             <button type="button" class="btn ghost" data-close>Annuleren</button>
           </div>
           ${s.id ? `<div class="inline"><button type="button" class="btn ghost" data-copy="${s.id}">Kopie op ander tijdstip</button>
             <button type="button" class="btn danger" data-del="${s.id}">Verwijderen</button></div>` : ''}
         </div>
       </form>`;
+    $('#modal').classList.add('wide');
     if (!$('#modal').open) $('#modal').showModal();
     const form = $('#editForm');
     form.titel.focus();
-    form.addEventListener('submit', e => {
+
+    const toonFoto = src => {
+      $('#fotoPreview').innerHTML = src ? `<img src="${src}" alt="">` : '<span class="hint">Geen foto</span>';
+      $('#fotoWeg').hidden = !src;
+    };
+    if (s.fotoId) { $('#fotoPreview').innerHTML = '<span class="hint">Laden…</span>'; loadFoto(s.fotoId).then(src => { if (editFoto === null) toonFoto(src); }); }
+    $('#fotoInput').addEventListener('change', async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      $('#fotoPreview').innerHTML = '<span class="hint">Verkleinen…</span>';
+      try { editFoto = await comprimeer(file); toonFoto(editFoto); }
+      catch (err) { alert(err.message); toonFoto(null); }
+      e.target.value = '';
+    });
+    $('#fotoWeg').addEventListener('click', () => { editFoto = 'weg'; toonFoto(null); });
+    const checkVideo = () => {
+      const v = form.video.value.trim();
+      $('#videoCheck').innerHTML = !v ? '' : videoEmbed(v) ? '<span class="saved">✓ Video herkend</span>' : '<span class="warn">Dit is geen YouTube- of Vimeo-link.</span>';
+    };
+    form.video.addEventListener('input', checkVideo); checkVideo();
+
+    form.addEventListener('submit', async e => {
       e.preventDefault();
       const f = Object.fromEntries(new FormData(form));
+      const sync = !!f.sync; delete f.sync;
       Object.keys(f).forEach(k => { f[k] = String(f[k]).trim(); });
       f.start = f.start.replace(/^0(\d)/, '$1'); f.eind = f.eind.replace(/^0(\d)/, '$1');
       const warn = $('#editWarn');
       if (!f.titel) { warn.textContent = 'Vul een titel in.'; return; }
       if (!validTime(f.start) || !validTime(f.eind) || toMin(f.eind) <= toMin(f.start)) { warn.textContent = 'De eindtijd moet na de begintijd liggen.'; return; }
+      if (f.video && !videoEmbed(f.video)) { warn.textContent = 'Gebruik een link naar YouTube of Vimeo, of laat het videoveld leeg.'; return; }
       const botst = data.sessies.find(x => x.id !== s.id && x.zaal === f.zaal && toMin(x.start) < toMin(f.eind) && toMin(f.start) < toMin(x.eind));
       if (botst && !confirm(`${f.zaal} is dan al bezet door "${botst.titel}" (${botst.start}–${botst.eind}). Toch opslaan?`)) return;
+
+      const oudeFotos = [s.fotoId, ...(sync ? zusjes.map(z => z.fotoId) : [])];
+      f.fotoId = s.fotoId || '';
+      if (editFoto === 'weg') f.fotoId = '';
+      else if (editFoto) {
+        const btn = $('#editSave'); btn.disabled = true; btn.textContent = 'Foto opslaan…';
+        try { f.fotoId = 'f' + newId(); await saveFoto(f.fotoId, editFoto); }
+        catch (err) { btn.disabled = false; btn.textContent = 'Opslaan'; warn.textContent = 'De foto kon niet worden opgeslagen: ' + err.message; return; }
+      }
       wijzig(d => {
         if (s.id) Object.assign(d.sessies.find(x => x.id === s.id), f);
         else d.sessies.push({ id: newId(), ...f });
+        if (sync) zusjes.forEach(z => { const t = d.sessies.find(x => x.id === z.id); if (t) UITLEG_VELDEN.forEach(k => { t[k] = f[k]; }); });
       }, s.id ? 'Sessie opgeslagen' : 'Sessie toegevoegd');
+      opruimenFotos(oudeFotos);
       $('#modal').close();
     });
   }
 
-  function exportBackup() {
+  async function exportBackup() {
+    const media = {};
+    for (const id of new Set(data.sessies.map(x => x.fotoId).filter(Boolean))) media[id] = await loadFoto(id);
     const a = Object.assign(document.createElement('a'), {
-      href: URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' })),
+      href: URL.createObjectURL(new Blob([JSON.stringify({ ...data, media }, null, 1)], { type: 'application/json' })),
       download: `congresprogramma-${new Date().toISOString().slice(0, 10)}.json`,
     });
     a.click();
   }
 
   function importBackup(file) {
-    file.text().then(t => {
-      const d = normalize(JSON.parse(t));
+    file.text().then(async t => {
+      const raw = JSON.parse(t);
+      const media = raw.media || {}; delete raw.media;
+      const d = normalize(raw);
       if (!d.sessies.length && !confirm('Dit bestand bevat geen sessies. Toch terugzetten?')) return;
       if (!confirm(`Het huidige programma vervangen door dit bestand (${d.sessies.length} sessies)?`)) return;
+      for (const [id, src] of Object.entries(media)) if (src) await saveFoto(id, src).catch(() => {});
+      const oud = data.sessies.map(x => x.fotoId);
       wijzig(() => { data = d; }, 'Back-up teruggezet');
+      opruimenFotos(oud);
     }).catch(e => alert('Dit bestand kan niet worden gelezen: ' + e.message));
   }
 
@@ -516,6 +690,7 @@
       if (s && confirm(`"${s.titel}" (${s.start}–${s.eind}, ${s.zaal}) verwijderen?`)) {
         if ($('#modal').open) $('#modal').close();
         wijzig(dd => { dd.sessies = dd.sessies.filter(x => x.id !== s.id); }, 'Sessie verwijderd');
+        opruimenFotos([s.fotoId]);
       }
       return;
     }
@@ -648,7 +823,8 @@
         const p = PALET[typeInfo(s.type).kleur] || PALET.navy;
         const titel = doc.setFont('helvetica', 'bold').setFontSize(11.5).splitTextToSize(s.titel, R - L - 34);
         const meta = doc.setFont('helvetica', 'normal').setFontSize(9).splitTextToSize(`${s.zaal}${s.cap ? ` (${s.cap} pl.)` : ''}  ·  ${s.spreker}  ·  ${s.type}`, R - L - 34);
-        const beschr = s.beschrijving ? doc.setFontSize(8.5).splitTextToSize(s.beschrijving, R - L - 34).slice(0, 4) : [];
+        const kort = (s.samenvatting || s.beschrijving || '').replace(/\*\*/g, '');
+        const beschr = kort ? doc.setFontSize(8.5).splitTextToSize(kort, R - L - 34).slice(0, 4) : [];
         const h = 6 + titel.length * 5 + meta.length * 4.2 + (beschr.length ? 1.5 + beschr.length * 3.8 : 0) + 3;
         if (y + h > H - 22) { voet(); doc.addPage(); y = 20; }
         const b = botsingen(s).length;

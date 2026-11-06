@@ -5,6 +5,7 @@
 // Opslag:
 //   /congres/data        – het hele programma als JSON-tekst
 //   /congres/updatedAt   – servertijd van de laatste wijziging
+//   /congresMedia/{id}   – foto's (JPEG als data-URL), los geladen per sessie
 //   /congresLogin/{e-mail} – wordt geschreven bij inloggen om te testen of iemand beheerder is (niet openbaar)
 //   /congresBeheer/{e-mail met punten als komma's} = {email, addedBy, at}
 const Cloud = (() => {
@@ -127,6 +128,16 @@ const Cloud = (() => {
     return firebase.database().ref('congresBeheer/' + key).remove();
   }
 
+  // Foto's: los opgeslagen onder /congresMedia/{id} als data-URL; bezoekers halen ze op met een HTTP-aanvraag.
+  function getMedia(id) {
+    return fetch(firebaseConfig.databaseURL + '/congresMedia/' + encodeURIComponent(id) + '.json')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  }
+
+  function setMedia(id, src) {
+    return firebase.database().ref('congresMedia/' + id).set(src || null);
+  }
+
   function signIn() {
     auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => {
       if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
@@ -156,7 +167,7 @@ const Cloud = (() => {
   }
 
   return {
-    enabled, init, signIn, signOut, save, flush, addAdmin, removeAdmin, emailKey,
+    enabled, init, signIn, signOut, save, flush, addAdmin, removeAdmin, emailKey, getMedia, setMedia,
     status: () => status,
     user: () => user,
     canEdit: () => editor,
