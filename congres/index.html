@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rijke Taal Congres 2027</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amaranth:ital,wght@0,400;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><img src="../img/boor-logo.png" alt="BOOR – kwaliteit in onderwijs"><span class="brand-title" id="brandName">Congres</span></div>
+    <nav class="tabs" role="tablist">
+      <button data-view="grid">Blokkenschema</button>
+      <button data-view="list">Alle sessies</button>
+      <button data-view="my">Mijn schema <span class="count" id="mycount">0</span></button>
+      <button data-view="beheer" class="only-editor">Beheer</button>
+    </nav>
+    <div class="cloud" id="cloudBar"></div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <h1 id="heroTitle"></h1>
+        <p class="hero-sub" id="heroSub"></p>
+        <p class="hero-intro" id="heroIntro"></p>
+        <div class="stats" id="stats"></div>
+      </div>
+      <svg class="stripes" viewBox="0 0 260 200" aria-hidden="true">
+        <g fill="#e9bfd1">
+          <rect x="40" y="10" width="44" height="180" rx="22" transform="skewX(-14)"/>
+          <rect x="96" y="0" width="44" height="190" rx="22" transform="skewX(-14)"/>
+          <rect x="152" y="14" width="44" height="176" rx="22" transform="skewX(-14)"/>
+          <rect x="208" y="4" width="44" height="186" rx="22" transform="skewX(-14)"/>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <main>
+    <div id="shared-banner" class="banner" hidden></div>
+
+    <section class="card filterbar" id="filters">
+      <div class="filters">
+        <input type="search" id="q" placeholder="Zoek op titel, spreker, organisatie of zaal…" aria-label="Zoeken">
+        <select id="at" aria-label="Bezig om"><option value="">Elk tijdstip</option></select>
+        <select id="dur" aria-label="Duur">
+          <option value="">Elke duur</option>
+          <option value="45">Tot 45 min</option>
+          <option value="60">Tot 1 uur</option>
+          <option value="61">Langer dan 1 uur</option>
+        </select>
+        <label class="switch"><input type="checkbox" id="fits"> Alleen wat in mijn schema past</label>
+        <button class="linkbtn" id="reset">Wis filters</button>
+      </div>
+      <div class="chips" id="typechips"></div>
+    </section>
+
+    <section id="view-grid" class="view card">
+      <p class="hint">Klik op een blok voor meer informatie of om het aan je schema toe te voegen. Gekozen sessies zijn donkerblauw (✓); sessies die botsen met je keuzes zijn gearceerd.</p>
+      <div class="grid-scroll"><div class="grid" id="grid"></div></div>
+    </section>
+
+    <section id="view-list" class="view">
+      <p class="hint" id="listcount"></p>
+      <div class="list" id="list"></div>
+    </section>
+
+    <section id="view-my" class="view">
+      <h2 class="print-title">Mijn schema</h2>
+      <div class="my">
+        <div class="card" id="mytimeline"></div>
+        <aside class="side">
+          <div class="card">
+            <h3>Overzicht</h3>
+            <div id="mysummary" class="hint"></div>
+          </div>
+          <div class="card">
+            <h3>Bewaren &amp; delen</h3>
+            <p class="hint">Je schema wordt automatisch in deze browser bewaard.</p>
+            <button class="btn block" id="share">🔗 Kopieer deellink</button>
+            <button class="btn block" id="print">🖨️ Afdrukken / PDF</button>
+            <button class="btn block" id="ics" hidden>📅 Zet in agenda (.ics)</button>
+            <button class="btn block danger" id="clear">Schema leegmaken</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="view-beheer" class="view"></section>
+  </main>
+
+  <footer id="footer"></footer>
+
+  <dialog id="modal"><div id="modal-content"></div></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <script src="programma.js?v=1"></script>
+  <script src="cloud.js?v=1"></script>
+  <script src="app.js?v=1"></script>
+</body>
+</html>
