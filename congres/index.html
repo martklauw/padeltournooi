@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amaranth:ital,wght@0,400;0,700;1,400&display=swap">
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
   <header class="topbar">
@@ -80,7 +80,8 @@
           </div>
           <div class="card">
             <h3>Bewaren &amp; delen</h3>
-            <p class="hint">Je schema wordt automatisch in deze browser bewaard.</p>
+            <p class="hint">Je schema wordt automatisch in deze browser bewaard. Download de PDF om het ook offline bij de hand te hebben.</p>
+            <button class="btn block pink" id="pdf">📄 Download als PDF</button>
             <button class="btn block" id="share">🔗 Kopieer deellink</button>
             <button class="btn block" id="print">🖨️ Afdrukken / PDF</button>
             <button class="btn block" id="ics" hidden>📅 Zet in agenda (.ics)</button>
@@ -102,7 +103,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
   <script src="programma.js?v=1"></script>
-  <script src="cloud.js?v=1"></script>
-  <script src="app.js?v=1"></script>
+  <script src="cloud.js?v=2"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

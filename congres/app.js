@@ -589,6 +589,95 @@
     catch { prompt('Kopieer deze link:', u.toString()); }
   });
   $('#print').addEventListener('click', () => window.print());
+  /* PDF van het persoonlijke schema (echt bestand, ook offline te bewaren) */
+  const loadScript = src => new Promise((res, rej) => {
+    const el = Object.assign(document.createElement('script'), { src, onload: res, onerror: () => rej(new Error('Laden mislukt')) });
+    document.head.appendChild(el);
+  });
+
+  async function downloadPdf() {
+    const m = mijnSessies();
+    if (!m.length) return toast('Voeg eerst sessies toe aan je schema');
+    const btn = $('#pdf'); btn.disabled = true; btn.textContent = 'PDF maken…';
+    try {
+      for (const src of ['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js']) {
+        if (window.jspdf) break;
+        await loadScript(src).catch(() => {});
+      }
+      if (!window.jspdf) throw new Error('PDF-onderdeel kon niet worden geladen');
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const W = 210, H = 297, L = 16, R = W - 16;
+      const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+      const NAVY = hex('#2f335b'), PINK = hex('#c70a64'), BLUE = hex('#0090ad'), MUTED = hex('#6b6f8e'), TPINK = hex('#e9bfd1');
+      const i = data.info;
+      const datum = i.datum ? new Date(i.datum + 'T12:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+
+      // Kop: donkerblauw vlak met vijfhoekige onderkant (huisstijl) en bordwisserstrepen
+      const kop = () => {
+        doc.setFillColor(...NAVY);
+        doc.roundedRect(L - 4, 10, R - L + 8, 34, 4, 4, 'F');
+        doc.triangle(L - 4, 40, R + 4, 40, W / 2, 48, 'F');
+        doc.setFillColor(...TPINK);
+        [0, 1, 2, 3].forEach(k => doc.roundedRect(R - 40 + k * 9, 15, 5.5, 24, 2.75, 2.75, 'F'));
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
+        doc.text(i.naam, L + 2, 22, { maxWidth: R - L - 50 });
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5);
+        doc.text(['Mijn schema', [datum, i.locatie].filter(Boolean).join(' · ')].filter(Boolean), L + 2, 30);
+      };
+      kop();
+      let y = 58;
+      const voet = () => {
+        doc.setFontSize(8); doc.setTextColor(...MUTED);
+        const nu = new Date().toLocaleString('nl-NL', { dateStyle: 'long', timeStyle: 'short' });
+        doc.text(`Gemaakt op ${nu}. Wijzigingen in het programma voorbehouden; actueel programma: ${location.origin + location.pathname}`, L, H - 10, { maxWidth: R - L - 30 });
+      };
+
+      const regel = (lines, size, style, color, x, yy) => { doc.setFont('helvetica', style); doc.setFontSize(size); doc.setTextColor(...color); doc.text(lines, x, yy); };
+      let cursor = DAG_START;
+      const vrij = (a, b) => {
+        if (y > H - 30) { voet(); doc.addPage(); y = 20; }
+        doc.setDrawColor(...hex('#d9e6ea')); doc.setLineDashPattern([1.2, 1.2], 0);
+        doc.roundedRect(L + 24, y - 4, R - L - 24, 9, 2, 2, 'S'); doc.setLineDashPattern([], 0);
+        regel(`Vrij: ${fmt(a)} – ${fmt(b)}`, 9, 'normal', MUTED, L + 28, y + 1.8);
+        y += 13;
+      };
+      for (const s of m) {
+        if (s.start > cursor) vrij(cursor, s.start);
+        const p = PALET[typeInfo(s.type).kleur] || PALET.navy;
+        const titel = doc.setFont('helvetica', 'bold').setFontSize(11.5).splitTextToSize(s.titel, R - L - 34);
+        const meta = doc.setFont('helvetica', 'normal').setFontSize(9).splitTextToSize(`${s.zaal}${s.cap ? ` (${s.cap} pl.)` : ''}  ·  ${s.spreker}  ·  ${s.type}`, R - L - 34);
+        const beschr = s.beschrijving ? doc.setFontSize(8.5).splitTextToSize(s.beschrijving, R - L - 34).slice(0, 4) : [];
+        const h = 6 + titel.length * 5 + meta.length * 4.2 + (beschr.length ? 1.5 + beschr.length * 3.8 : 0) + 3;
+        if (y + h > H - 22) { voet(); doc.addPage(); y = 20; }
+        const b = botsingen(s).length;
+        doc.setFillColor(...hex(p.bg)); doc.roundedRect(L + 24, y - 5, R - L - 24, h, 3, 3, 'F');
+        doc.setFillColor(...hex(p.c)); doc.roundedRect(L + 24, y - 5, 2.5, h, 1.2, 1.2, 'F');
+        if (b) { doc.setDrawColor(...PINK); doc.setLineWidth(.6); doc.roundedRect(L + 24, y - 5, R - L - 24, h, 3, 3, 'S'); doc.setLineWidth(.2); }
+        regel(fmt(s.start), 12, 'bold', NAVY, L, y + 1);
+        regel(fmt(s.eind), 9, 'normal', MUTED, L, y + 6);
+        let yy = y + 1;
+        regel(titel, 11.5, 'bold', NAVY, L + 30, yy); yy += titel.length * 5;
+        regel(meta, 9, 'normal', BLUE, L + 30, yy); yy += meta.length * 4.2;
+        if (beschr.length) { yy += 1.5; regel(beschr, 8.5, 'normal', MUTED, L + 30, yy); }
+        if (b) regel('Let op: overlapt met een andere keuze', 8, 'bold', PINK, R - 58, y - 1);
+        y += h + 4;
+        cursor = Math.max(cursor, s.eind);
+      }
+      if (cursor < DAG_EIND) vrij(cursor, DAG_EIND);
+      voet();
+      const naam = 'mijn-schema-' + norm(i.naam).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.pdf';
+      doc.save(naam);
+      toast('PDF gedownload');
+    } catch (e) {
+      alert('De PDF kon niet worden gemaakt (' + e.message + '). Gebruik eventueel "Afdrukken / PDF".');
+    } finally {
+      btn.disabled = false; btn.textContent = '📄 Download als PDF';
+    }
+  }
+  $('#pdf').addEventListener('click', downloadPdf);
+
   $('#clear').addEventListener('click', () => {
     if (mijn.size && confirm('Weet je zeker dat je je hele schema wilt leegmaken?')) { mijn.clear(); bewaarSchema(); render(); }
   });
