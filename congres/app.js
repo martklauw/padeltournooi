@@ -35,7 +35,7 @@
 
   function normalize(d) {
     d = d || {};
-    d.info = Object.assign({ naam: 'Congres', ondertitel: '', datum: '', locatie: '', intro: '' }, d.info || {});
+    d.info = Object.assign({ naam: 'Congres', ondertitel: '', datum: '', locatie: '', intro: '', overOns: window.STANDAARD_PROGRAMMA.info?.overOns || '' }, d.info || {});
     d.typen = Array.isArray(d.typen) ? d.typen : [];
     d.zalen = Array.isArray(d.zalen) ? d.zalen : [];
     if (!Array.isArray(d.sprekers)) d.sprekers = clone(window.STANDAARD_PROGRAMMA.sprekers || []);
@@ -253,7 +253,8 @@
     renderBeheer();
     document.querySelectorAll('.tabs [data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
     renderSprekers();
-    ['grid', 'list', 'sprekers', 'my', 'beheer'].forEach(v => { $('#view-' + v).hidden = v !== view; });
+    $('#overTekst').innerHTML = opmaak(data.info.overOns) || '<p class="hint">Nog geen tekst.</p>';
+    ['grid', 'list', 'sprekers', 'over', 'my', 'beheer'].forEach(v => { $('#view-' + v).hidden = v !== view; });
     $('#filters').hidden = !(view === 'grid' || view === 'list');
     if ($('#modal').open && openId) openDetail(openId);
   }
@@ -344,6 +345,8 @@
       .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
     const isItem = r => /^\s*[-•*]\s+/.test(r);
     return String(t || '').trim().split(/\n\s*\n/).map(blok => {
+      const kop = blok.match(/^##\s+(.+)(\n[\s\S]*)?$/);
+      if (kop) return '<h3>' + inline(kop[1]) + '</h3>' + (kop[2] ? opmaak(kop[2]) : '');
       // Opeenvolgende "- "-regels worden een lijst; overige regels een alinea.
       let html = '', tekst = [], items = [];
       const flush = () => {
@@ -447,6 +450,8 @@
             <label class="field">Locatie<input type="text" data-info="locatie" value="${esc(i.locatie)}"></label>
           </div>
           <label class="field">Introductietekst<textarea data-info="intro">${esc(i.intro)}</textarea></label>
+          <label class="field">Pagina "Over ons"<textarea data-info="overOns" rows="10">${esc(i.overOns)}</textarea>
+            <small class="hint">Opmaak: "## " aan het begin van een regel = tussenkopje · lege regel = nieuwe alinea · "- " = opsomming · **vet**.</small></label>
         </section>
 
         <section class="card" id="adminsCard">${adminsHTML()}</section>
@@ -986,9 +991,18 @@
     $('#sh-no').onclick = () => { bn.hidden = true; history.replaceState(null, '', location.pathname + location.search); };
   }
 
+  // Kopbalk verbergen bij naar beneden scrollen, terug bij omhoog scrollen.
+  let lastY = window.scrollY;
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY, bar = $('.topbar');
+    if (y > lastY + 6 && y > bar.offsetHeight) bar.classList.add('bar-hidden');
+    else if (y < lastY - 6 || y < 20) bar.classList.remove('bar-hidden');
+    lastY = y;
+  }, { passive: true });
+
   /* ===================== Start ===================== */
   const startView = location.hash.slice(1);
-  if (['grid', 'list', 'sprekers', 'my', 'beheer'].includes(startView)) view = startView;
+  if (['grid', 'list', 'sprekers', 'over', 'my', 'beheer'].includes(startView)) view = startView;
 
   Cloud.init({
     onData(d) {
