@@ -1014,7 +1014,7 @@
       render();
     },
     onAdmins() { const c = $('#adminsCard'); if (c && !c.contains(document.activeElement)) c.innerHTML = adminsHTML(); },
-    onDenied(email) { alert(`Je bent ingelogd als ${email}, maar dit account is geen beheerder van het congres. Vraag een beheerder om je Gmail-adres toe te voegen.`); },
+    onDenied(email, e) { alert(`Je bent ingelogd als ${email}, maar dit account is geen beheerder van het congres. Vraag een beheerder om je Gmail-adres toe te voegen.\n\n(Technische melding: ${e?.code || e?.message || 'geen schrijfrechten'})`); },
     onStatus() { renderCloud(); renderBeheer(); },
     onSaved() {},
     onError(e) { alert('Opslaan online is mislukt: ' + (e.message || e) + '\nControleer je internetverbinding en of je nog beheerder bent.'); },

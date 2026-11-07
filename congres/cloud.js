@@ -36,6 +36,9 @@ const Cloud = (() => {
     if (!enabled) return;
     firebase.initializeApp(firebaseConfig);
     auth = firebase.auth();
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+    // Terugkomst na inloggen via doorsturen: eventuele fout tonen.
+    auth.getRedirectResult().catch(authFout);
     root = firebase.database().ref('congres');
 
     // Bezoekers halen het programma op met een gewone HTTP-aanvraag (geen blijvende verbinding),
@@ -59,7 +62,7 @@ const Cloud = (() => {
           watchLive();
           watchAdmins();
         } catch (e) {
-          handlers.onDenied(u.email);
+          handlers.onDenied(u.email, e);
         }
       }
       handlers.onAuth();
@@ -138,11 +141,28 @@ const Cloud = (() => {
     return firebase.database().ref('congresMedia/' + id).set(src || null);
   }
 
+  // Uitleg bij de meest voorkomende inlogfouten.
+  function authFout(e) {
+    const uitleg = {
+      'auth/unauthorized-domain': 'Dit webadres staat niet in de lijst met toegestane domeinen in Firebase (Authentication → Settings → Authorized domains). Voeg ' + location.hostname + ' daar toe.',
+      'auth/operation-not-allowed': 'Inloggen met Google staat uit in Firebase (Authentication → Sign-in method → Google).',
+      'auth/network-request-failed': 'Er is geen verbinding met Google. Controleer je internetverbinding of een adblocker/privacy-extensie.',
+      'auth/web-storage-unsupported': 'Je browser blokkeert opslag die nodig is om in te loggen (bijvoorbeeld een privévenster of strenge cookie-instellingen).',
+      'auth/internal-error': 'Google gaf een interne fout. Probeer het opnieuw of gebruik een andere browser.',
+    }[e.code] || '';
+    alert('Inloggen is niet gelukt.\n\n' + (uitleg ? uitleg + '\n\n' : '') + 'Foutcode: ' + (e.code || 'onbekend') + '\n' + (e.message || e));
+  }
+
+  // Eerst een pop-upvenster; lukt dat niet (geblokkeerd of niet ondersteund), dan via doorsturen naar Google.
   function signIn() {
-    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => {
-      if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
-        alert('Inloggen mislukt: ' + e.message);
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    auth.signInWithPopup(provider).catch(e => {
+      if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return;
+      if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') {
+        return auth.signInWithRedirect(provider).catch(authFout);
       }
+      authFout(e);
     });
   }
 
