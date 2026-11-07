@@ -153,8 +153,42 @@ const Cloud = (() => {
     alert('Inloggen is niet gelukt.\n\n' + (uitleg ? uitleg + '\n\n' : '') + 'Foutcode: ' + (e.code || 'onbekend') + '\n' + (e.message || e));
   }
 
-  // Eerst een pop-upvenster; lukt dat niet (geblokkeerd of niet ondersteund), dan via doorsturen naar Google.
-  function signIn() {
+  // Inloggen met Google's eigen knop (Google Identity Services). Dit werkt rechtstreeks met deze site,
+  // zonder het tussenvenster op firebaseapp.com dat Safari en Chrome blokkeren tussen websites.
+  // Vereist: https://martklauw.github.io staat bij "Geautoriseerde JavaScript-bronnen" van deze client.
+  const GOOGLE_CLIENT_ID = '248661724675-9urcqibc5ool73upbvl5gqts23jg016h.apps.googleusercontent.com';
+  let gisReady = null, gisKlaar = null;
+  function loadGis() {
+    if (!gisReady) gisReady = new Promise((res, rej) => {
+      const el = Object.assign(document.createElement('script'), { src: 'https://accounts.google.com/gsi/client', async: true });
+      el.onload = () => {
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: resp => {
+            const cred = firebase.auth.GoogleAuthProvider.credential(resp.credential);
+            auth.signInWithCredential(cred).then(() => gisKlaar?.()).catch(authFout);
+          },
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        res();
+      };
+      el.onerror = () => { gisReady = null; rej(new Error('De inlogknop van Google kon niet worden geladen (adblocker of geen verbinding?)')); };
+      document.head.appendChild(el);
+    });
+    return gisReady;
+  }
+  // Toont de Google-knop in el; onKlaar wordt aangeroepen zodra de inlog bij Firebase gelukt is.
+  function renderGoogleButton(el, onKlaar) {
+    gisKlaar = onKlaar;
+    return loadGis().then(() => {
+      el.innerHTML = '';
+      google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', locale: 'nl', width: 280 });
+    });
+  }
+
+  // Oude manier (reserve): eerst een pop-upvenster; lukt dat niet (geblokkeerd of niet ondersteund), dan via doorsturen naar Google.
+  function signInPopup() {
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     auth.signInWithPopup(provider).catch(e => {
@@ -166,7 +200,7 @@ const Cloud = (() => {
     });
   }
 
-  function signOut() { auth.signOut(); }
+  function signOut() { try { google.accounts.id.disableAutoSelect(); } catch (e) { /* niet geladen */ } auth.signOut(); }
 
   // Wijzigingen even verzamelen en dan in één keer wegschrijven.
   function save(data) {
@@ -187,7 +221,7 @@ const Cloud = (() => {
   }
 
   return {
-    enabled, init, signIn, signOut, save, flush, addAdmin, removeAdmin, emailKey, getMedia, setMedia,
+    enabled, init, signInPopup, renderGoogleButton, signOut, save, flush, addAdmin, removeAdmin, emailKey, getMedia, setMedia,
     status: () => status,
     user: () => user,
     canEdit: () => editor,

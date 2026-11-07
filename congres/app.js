@@ -424,6 +424,26 @@
     });
   }
 
+  /* ===================== Inloggen ===================== */
+  function openLogin() {
+    openId = null;
+    $('#modal-content').innerHTML = `
+      <div class="m-head" style="--c:var(--navy)">
+        <span class="badge" style="--bg-c:var(--t-pink)">Beheer</span>
+        <h2>Inloggen</h2>
+        <button class="m-close" data-close aria-label="Sluiten">✕</button>
+      </div>
+      <div class="m-body">
+        <p>Log in met het Google-account (bijvoorbeeld je Gmail-adres) dat als beheerder is toegevoegd.</p>
+        <div id="gisBtn" class="gis-btn"><span class="hint">Inlogknop laden…</span></div>
+        <p class="hint" style="margin-top:16px">Lukt het niet? <button class="linkbtn" data-action="signin-popup" style="padding:0">Probeer de andere inlogmethode</button>.</p>
+      </div>`;
+    $('#modal').classList.remove('wide');
+    if (!$('#modal').open) $('#modal').showModal();
+    Cloud.renderGoogleButton($('#gisBtn'), () => { if ($('#modal').open) $('#modal').close(); toast('Ingelogd'); })
+      .catch(e => { $('#gisBtn').innerHTML = `<p class="warn">${esc(e.message)}</p>`; });
+  }
+
   /* ===================== Beheer ===================== */
   let beheerZoek = '';
 
@@ -762,7 +782,8 @@
       filter.win = d.gap.split('-').map(Number); filter.at = ''; $('#at').value = '';
       filter.fits = true; $('#fits').checked = true; view = 'list'; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); return;
     }
-    if (d.action === 'signin') return Cloud.signIn();
+    if (d.action === 'signin') return openLogin();
+    if (d.action === 'signin-popup') { $('#modal').close(); return Cloud.signInPopup(); }
     if (d.action === 'signout') return Cloud.signOut();
     // beheer
     if ('new' in d) return openEditor(null);
