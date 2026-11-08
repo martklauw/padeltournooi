@@ -28,6 +28,7 @@ const Cloud = (() => {
   let lastData = null, pending = null, timer = null, remoteEmpty = false, live = false, lastFetch = 0;
   let handlers = {};
   let adminsRef = null, admins = null, adminsError = null;
+  let logRef = null, logEntries = null, logError = null;
 
   const emailKey = email => String(email).trim().toLowerCase().replace(/\./g, ',');
 
@@ -54,6 +55,7 @@ const Cloud = (() => {
       user = u;
       editor = false;
       stopAdmins();
+      stopLog();
       stopLive();
       if (u) {
         try {
@@ -61,6 +63,8 @@ const Cloud = (() => {
           editor = true;
           watchLive();
           watchAdmins();
+          watchLog();
+          log('Ingelogd', '');
         } catch (e) {
           handlers.onDenied(u.email, e);
         }
@@ -113,6 +117,37 @@ const Cloud = (() => {
       adminsError = err;
       handlers.onAdmins();
     });
+  }
+
+  // Logboek: /congresLog/{push-id} = {at, email, action, detail}. Tijd en e-mail worden door de
+  // databaseregels gecontroleerd; regels kunnen alleen worden toegevoegd, niet gewijzigd of gewist.
+  function watchLog() {
+    logRef = firebase.database().ref('congresLog').limitToLast(500);
+    logRef.on('value', snap => {
+      const list = [];
+      snap.forEach(c => { list.push(c.val()); });
+      logEntries = list.reverse();
+      logError = null;
+      handlers.onLog?.();
+    }, err => {
+      logEntries = null; logError = err;
+      handlers.onLog?.();
+    });
+  }
+
+  function stopLog() {
+    if (logRef) logRef.off();
+    logRef = null; logEntries = null; logError = null;
+  }
+
+  function log(action, detail) {
+    if (!enabled || !editor || !user?.email) return;
+    firebase.database().ref('congresLog').push({
+      at: firebase.database.ServerValue.TIMESTAMP,
+      email: user.email.toLowerCase(),
+      action: String(action).slice(0, 100),
+      detail: String(detail || '').slice(0, 480),
+    }).catch(e => console.warn('Logboek bijwerken mislukt:', e.message));
   }
 
   function stopAdmins() {
@@ -228,5 +263,8 @@ const Cloud = (() => {
     remoteEmpty: () => remoteEmpty,
     admins: () => admins,
     adminsError: () => adminsError,
+    log,
+    logEntries: () => logEntries,
+    logError: () => logError,
   };
 })();

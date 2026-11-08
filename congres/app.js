@@ -103,7 +103,7 @@
   }
 
   /* ===================== Wijzigen door beheerders ===================== */
-  function wijzig(fn, melding) {
+  function wijzig(fn, melding, detail) {
     if (!editable()) return;
     fn(data);
     data = normalize(data);
@@ -111,7 +111,7 @@
     else localStorage.setItem(DATA_KEY, JSON.stringify(data));
     prepare();
     render();
-    if (melding) toast(melding);
+    if (melding) { toast(melding); Cloud.log(melding, detail); }
   }
 
   /* ===================== Weergave: algemeen ===================== */
@@ -580,8 +580,28 @@
             <input type="file" id="importFile" accept=".json,application/json" hidden>
           </div>
         </section>
+
+        <section class="card span-2" id="logCard">${logHTML()}</section>
       </div>`;
     const sel = $('#sessionTypeHelper'); if (sel) sel.innerHTML = typeOpts('');
+  }
+
+  let logZoek = '';
+  function logHTML() {
+    const kop = `<div class="card-head"><h2>Logboek</h2>
+      <input type="search" id="logFilter" placeholder="Zoek op naam, actie of sessie…" value="${esc(logZoek)}" style="max-width:300px"></div>`;
+    if (!Cloud.enabled) return kop + '<p class="hint">Het logboek wordt alleen bijgehouden in de online versie.</p>';
+    if (Cloud.logError()) return kop + '<div class="alert">Het logboek is nog niet beschikbaar: de databaseregels in Firebase moeten eerst worden bijgewerkt (onderdeel congresLog).</div>';
+    const alle = Cloud.logEntries();
+    if (!alle) return kop + '<p class="hint">Logboek laden…</p>';
+    const q = norm(logZoek);
+    const lijst = alle.filter(r => !q || norm([r.email, r.action, r.detail].join(' ')).includes(q));
+    const tijd = ms => new Date(ms).toLocaleString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return kop + `<p class="hint">Wie heeft wat gewijzigd. Alleen zichtbaar voor beheerders; regels kunnen niet worden aangepast of gewist. De laatste ${alle.length > 499 ? 500 : alle.length} acties.</p>
+      <ul class="log-list">${lijst.map(r => `
+        <li><time>${tijd(r.at)}</time><span class="log-who">${esc(r.email)}</span>
+          <span class="log-what"><b>${esc(r.action)}</b>${r.detail ? ` <span class="hint">${esc(r.detail)}</span>` : ''}</span></li>`).join('')
+        || '<li class="hint">Geen acties gevonden.</li>'}</ul>`;
   }
 
   function adminsHTML() {
@@ -611,7 +631,7 @@
     const email = input.value.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert('Vul een geldig e-mailadres in, bijvoorbeeld naam@gmail.com.'); input.focus(); return; }
     if (Cloud.admins()?.[Cloud.emailKey(email)]) { alert(`${email} is al beheerder.`); return; }
-    Cloud.addAdmin(email).then(() => { input.value = ''; toast(`${email} is nu beheerder`); })
+    Cloud.addAdmin(email).then(() => { input.value = ''; toast(`${email} is nu beheerder`); Cloud.log('Beheerder toegevoegd', email); })
       .catch(e => alert('Toevoegen is niet gelukt: ' + e.message));
   }
 
@@ -728,7 +748,7 @@
         if (s.id) Object.assign(d.sessies.find(x => x.id === s.id), f);
         else d.sessies.push({ id: newId(), ...f });
         if (sync) zusjes.forEach(z => { const t = d.sessies.find(x => x.id === z.id); if (t) UITLEG_VELDEN.forEach(k => { t[k] = f[k]; }); });
-      }, s.id ? 'Sessie opgeslagen' : 'Sessie toegevoegd');
+      }, s.id ? 'Sessie opgeslagen' : 'Sessie toegevoegd', `${f.titel} (${f.start}–${f.eind}, ${f.zaal})${sync ? ' + uitleg voor andere tijdstippen' : ''}${editFoto === 'weg' ? ' · foto verwijderd' : editFoto ? ' · nieuwe foto' : ''}`);
       opruimenFotos(oudeFotos);
       $('#modal').close();
     });
@@ -753,7 +773,7 @@
       if (!confirm(`Het huidige programma vervangen door dit bestand (${d.sessies.length} sessies)?`)) return;
       for (const [id, src] of Object.entries(media)) if (src) await saveFoto(id, src).catch(() => {});
       const oud = data.sessies.map(x => x.fotoId);
-      wijzig(() => { data = d; }, 'Back-up teruggezet');
+      wijzig(() => { data = d; }, 'Back-up teruggezet', `${file.name} · ${d.sessies.length} sessies`);
       opruimenFotos(oud);
     }).catch(e => alert('Dit bestand kan niet worden gelezen: ' + e.message));
   }
@@ -793,64 +813,64 @@
       const s = data.sessies.find(x => x.id === d.del);
       if (s && confirm(`"${s.titel}" (${s.start}–${s.eind}, ${s.zaal}) verwijderen?`)) {
         if ($('#modal').open) $('#modal').close();
-        wijzig(dd => { dd.sessies = dd.sessies.filter(x => x.id !== s.id); }, 'Sessie verwijderd');
+        wijzig(dd => { dd.sessies = dd.sessies.filter(x => x.id !== s.id); }, 'Sessie verwijderd', `${s.titel} (${s.start}–${s.eind}, ${s.zaal})`);
         opruimenFotos([s.fotoId]);
       }
       return;
     }
-    if ('addzaal' in d) return wijzig(dd => { dd.zalen.push({ naam: `Nieuwe zaal ${dd.zalen.length + 1}`, capaciteit: null }); }, 'Zaal toegevoegd');
-    if (d.delzaal) return wijzig(dd => { dd.zalen.splice(+d.delzaal, 1); }, 'Zaal verwijderd');
-    if ('addtype' in d) return wijzig(dd => { dd.typen.push({ naam: `Nieuw type ${dd.typen.length + 1}`, kleur: 'blauw', uitleg: '' }); }, 'Type toegevoegd');
-    if (d.deltype) return wijzig(dd => { dd.typen.splice(+d.deltype, 1); }, 'Type verwijderd');
+    if ('addzaal' in d) return wijzig(dd => { dd.zalen.push({ naam: `Nieuwe zaal ${dd.zalen.length + 1}`, capaciteit: null }); }, 'Zaal toegevoegd', `Nieuwe zaal ${data.zalen.length + 1}`);
+    if (d.delzaal) { const z = data.zalen[+d.delzaal]?.naam; return wijzig(dd => { dd.zalen.splice(+d.delzaal, 1); }, 'Zaal verwijderd', z); }
+    if ('addtype' in d) return wijzig(dd => { dd.typen.push({ naam: `Nieuw type ${dd.typen.length + 1}`, kleur: 'blauw', uitleg: '' }); }, 'Type toegevoegd', `Nieuw type ${data.typen.length + 1}`);
+    if (d.deltype) { const t = data.typen[+d.deltype]?.naam; return wijzig(dd => { dd.typen.splice(+d.deltype, 1); }, 'Type verwijderd', t); }
     if ('addadmin' in d) return addAdmin();
     if (d.deladmin) {
       const a = Cloud.admins()?.[d.deladmin];
-      if (a && confirm(`${a.email} verwijderen als beheerder?`)) Cloud.removeAdmin(d.deladmin).catch(err => alert('Verwijderen is niet gelukt: ' + err.message));
+      if (a && confirm(`${a.email} verwijderen als beheerder?`)) Cloud.removeAdmin(d.deladmin).then(() => Cloud.log('Beheerder verwijderd', a.email)).catch(err => alert('Verwijderen is niet gelukt: ' + err.message));
       return;
     }
-    if ('addspreker' in d) return wijzig(dd => { dd.sprekers.push({ naam: 'Nieuwe spreker', zoek: 'Nieuwe spreker', organisatie: '', status: 'concept', bio: '', bronnen: [] }); }, 'Spreker toegevoegd');
+    if ('addspreker' in d) return wijzig(dd => { dd.sprekers.push({ naam: 'Nieuwe spreker', zoek: 'Nieuwe spreker', organisatie: '', status: 'concept', bio: '', bronnen: [] }); }, 'Spreker toegevoegd', 'Nieuwe spreker');
     if (d.delspreker) {
       const x = data.sprekers[+d.delspreker];
-      if (x && confirm(`Het kopje voor ${x.naam} verwijderen?`)) wijzig(dd => { dd.sprekers.splice(+d.delspreker, 1); }, 'Spreker verwijderd');
+      if (x && confirm(`Het kopje voor ${x.naam} verwijderen?`)) wijzig(dd => { dd.sprekers.splice(+d.delspreker, 1); }, 'Spreker verwijderd', x.naam);
       return;
     }
     if ('sprekersaanvullen' in d) {
       const nieuw = [...new Set(data.sessies.map(s => s.spreker).filter(Boolean))]
         .filter(sp => !data.sprekers.some(x => norm(sp).includes(norm(x.zoek))));
       if (!nieuw.length) return toast('Alle sprekers hebben al een kopje');
-      return wijzig(dd => nieuw.forEach(sp => dd.sprekers.push({ naam: sp, zoek: sp, organisatie: '', status: 'concept', bio: '', bronnen: [] })), `${nieuw.length} spreker(s) aangemaakt`);
+      return wijzig(dd => nieuw.forEach(sp => dd.sprekers.push({ naam: sp, zoek: sp, organisatie: '', status: 'concept', bio: '', bronnen: [] })), `${nieuw.length} spreker(s) aangemaakt`, nieuw.join(', '));
     }
     if ('export' in d) return exportBackup();
     if ('import' in d) return $('#importFile').click();
-    if ('publish' in d) return wijzig(() => {}, 'Programma staat online');
+    if ('publish' in d) return wijzig(() => {}, 'Programma staat online', 'Standaardprogramma gepubliceerd');
   });
 
   // Beheervelden: opslaan bij verlaten van het veld.
   document.addEventListener('change', e => {
     const el = e.target, d = el.dataset;
     if (el.id === 'importFile' && el.files[0]) { importBackup(el.files[0]); el.value = ''; return; }
-    if (d.info) return wijzig(dd => { dd.info[d.info] = el.value.trim(); }, 'Opgeslagen');
+    if (d.info) return wijzig(dd => { dd.info[d.info] = el.value.trim(); }, 'Congresinfo gewijzigd', ({ naam: 'Naam', ondertitel: 'Ondertitel', datum: 'Datum', locatie: 'Locatie', intro: 'Introductietekst', overOns: 'Over ons' }[d.info] || d.info) + (d.info === 'datum' || d.info === 'naam' || d.info === 'locatie' ? ': ' + el.value.trim() : ''));
     if (d.zaal) {
       const idx = +d.zaal, old = data.zalen[idx].naam;
       if (d.field === 'naam') {
         const nieuw = el.value.trim();
         if (!nieuw || (nieuw !== old && data.zalen.some(z => z.naam === nieuw))) { alert('Kies een unieke, niet-lege zaalnaam.'); el.value = old; return; }
-        return wijzig(dd => { dd.zalen[idx].naam = nieuw; dd.sessies.forEach(s => { if (s.zaal === old) s.zaal = nieuw; }); }, 'Zaal hernoemd');
+        return wijzig(dd => { dd.zalen[idx].naam = nieuw; dd.sessies.forEach(s => { if (s.zaal === old) s.zaal = nieuw; }); }, 'Zaal hernoemd', `${old} → ${nieuw}`);
       }
-      return wijzig(dd => { dd.zalen[idx].capaciteit = el.value === '' ? null : Math.max(0, +el.value); }, 'Opgeslagen');
+      return wijzig(dd => { dd.zalen[idx].capaciteit = el.value === '' ? null : Math.max(0, +el.value); }, 'Zaal aangepast', `${old}: ${el.value || '–'} plaatsen`);
     }
     if (d.spr) {
       const idx = +d.spr;
-      return wijzig(dd => { dd.sprekers[idx][d.field] = el.value.trim(); if (d.field === 'naam' && !dd.sprekers[idx].zoek) dd.sprekers[idx].zoek = el.value.trim(); }, 'Opgeslagen');
+      return wijzig(dd => { dd.sprekers[idx][d.field] = el.value.trim(); if (d.field === 'naam' && !dd.sprekers[idx].zoek) dd.sprekers[idx].zoek = el.value.trim(); }, 'Spreker aangepast', `${data.sprekers[idx].naam} · ${({ naam: 'naam', organisatie: 'organisatie', zoek: 'koppeling', bio: 'tekst', status: 'status: ' + el.value }[d.field] || d.field)}`);
     }
     if (d.typ) {
       const idx = +d.typ, old = data.typen[idx].naam;
       if (d.field === 'naam') {
         const nieuw = el.value.trim();
         if (!nieuw || (nieuw !== old && data.typen.some(t => t.naam === nieuw))) { alert('Kies een unieke, niet-lege naam.'); el.value = old; return; }
-        return wijzig(dd => { dd.typen[idx].naam = nieuw; dd.sessies.forEach(s => { if (s.type === old) s.type = nieuw; }); }, 'Type hernoemd');
+        return wijzig(dd => { dd.typen[idx].naam = nieuw; dd.sessies.forEach(s => { if (s.type === old) s.type = nieuw; }); }, 'Type hernoemd', `${old} → ${nieuw}`);
       }
-      return wijzig(dd => { dd.typen[idx][d.field] = el.value.trim(); }, 'Opgeslagen');
+      return wijzig(dd => { dd.typen[idx][d.field] = el.value.trim(); }, 'Type aangepast', `${old} · ${d.field === 'kleur' ? 'kleur' : 'uitleg'}`);
     }
   });
 
@@ -863,6 +883,12 @@
     }
   });
   document.addEventListener('input', e => {
+    if (e.target.id === 'logFilter') {
+      logZoek = e.target.value;
+      const ul = $('#logCard .log-list'); const tmp = document.createElement('div'); tmp.innerHTML = logHTML();
+      const nieuw = tmp.querySelector('.log-list'); if (ul && nieuw) ul.replaceWith(nieuw);
+      return;
+    }
     if (e.target.id === 'sprekerZoek') { sprekerZoek = e.target.value; renderSprekers(); }
   });
   document.addEventListener('keydown', e => {
@@ -1034,6 +1060,7 @@
       if (Cloud.canEdit() && location.hash === '#beheer') view = 'beheer';
       render();
     },
+    onLog() { const c = $('#logCard'); if (c && !c.contains(document.activeElement)) c.innerHTML = logHTML(); },
     onAdmins() { const c = $('#adminsCard'); if (c && !c.contains(document.activeElement)) c.innerHTML = adminsHTML(); },
     onDenied(email, e) { alert(`Je bent ingelogd als ${email}, maar dit account is geen beheerder van het congres. Vraag een beheerder om je Gmail-adres toe te voegen.\n\n(Technische melding: ${e?.code || e?.message || 'geen schrijfrechten'})`); },
     onStatus() { renderCloud(); renderBeheer(); },
