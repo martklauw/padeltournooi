@@ -135,7 +135,7 @@
     $('#typechips').innerHTML = `<span class="chips-label">Doelgroep:</span>` + gebruikt.map(g => `
       <button class="chip" data-groep="${esc(g.key)}" aria-pressed="${filter.groepen.has(g.key)}" style="${kleurVars(g.key)}" title="${esc(g.omschrijving)}">
         <span class="dot"></span>${esc(g.naam)} <small>(${SESSIES.filter(x => x.doelgroep === g.key).length})</small></button>`).join('');
-    $('#nb').textContent = data.info.nb ? 'NB: ' + data.info.nb : '';
+    $('#nb').textContent = data.info.nb || '';
     const sel = $('#werkvorm'), cur = filter.werkvorm;
     const vormen = [...new Set(SESSIES.map(x => x.type).filter(Boolean))].sort((x, y) => x.localeCompare(y, 'nl'));
     sel.innerHTML = '<option value="">Elke werkvorm</option>' + vormen.map(v => `<option ${v === cur ? 'selected' : ''}>${esc(v)}</option>`).join('');
