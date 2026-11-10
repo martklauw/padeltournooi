@@ -290,7 +290,7 @@
         ${s.voorWie ? `<h4>Voor wie</h4><div class="rich">${opmaak(s.voorWie)}</div>` : ''}
         ${videoEmbed(s.video) ? `<h4>Video</h4><div class="video"><iframe src="${esc(videoEmbed(s.video))}" title="Video bij ${esc(s.titel)}" loading="lazy" allow="fullscreen; picture-in-picture; encrypted-media" allowfullscreen></iframe></div>` : ''}
         ${s.sprekerInfo ? `<h4>Over ${esc(s.spreker)}</h4><div class="rich">${opmaak(s.sprekerInfo)}</div>` : ''}
-        ${info.uitleg && s.type ? `<p class="hint"><b>Wat is een ${esc(s.type.toLowerCase())}?</b> ${esc(info.uitleg)}</p>` : ''}
+        ${info.uitleg && s.type && CONFIG.werkvormUitleg !== false ? `<p class="hint"><b>Wat is een ${esc(s.type.toLowerCase())}?</b> ${esc(info.uitleg)}</p>` : ''}
         ${b.length ? `<div class="clashbox">⚠️ Deze sessie overlapt met je keuze: <b>${b.map(x => esc(x.titel) + ` (${fmt(x.start)}–${fmt(x.eind)})`).join(', ')}</b>.
            <div style="margin-top:8px"><button class="btn pink" data-replace="${s.id}">Vervang door deze sessie</button></div></div>` : ''}
         <div class="inline" style="margin-top:12px">${knop(s)}
