@@ -75,8 +75,8 @@ body:not(.editor) .only-editor { display: none; }
 .stats { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 18px; font-size: .9rem; }
 .stats b { display: block; font-family: var(--head); font-size: 1.6rem; line-height: 1.1; color: #fff; }
 .stats div { color: rgba(255,255,255,.8); }
-.stripes { width: 230px; flex: none; }
-@media (max-width: 760px) { .stripes { display: none; } .hero-inner { padding: 24px; } }
+.hero-art { width: clamp(260px, 34vw, 420px); height: auto; flex: none; margin: -10px -10px -14px 0; }
+@media (max-width: 760px) { .hero-inner { padding: 24px; flex-direction: column-reverse; align-items: flex-start; } .hero-art { width: 100%; max-width: 340px; margin: 0 auto -6px; } }
 
 main { max-width: 1280px; margin: 0 auto; padding: 0 24px 24px; }
 
