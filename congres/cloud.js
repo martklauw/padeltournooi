@@ -19,7 +19,8 @@ const Cloud = (() => {
     appId: '1:248661724675:web:cce9e7659970cdbebd0836',
   };
 
-  const enabled = typeof firebase !== 'undefined'
+  // In de voorbeeldversie (CONGRES_CONFIG.voorbeeld) wordt de database niet gebruikt.
+  const enabled = typeof firebase !== 'undefined' && !window.CONGRES_CONFIG?.voorbeeld
     && location.protocol !== 'file:'
     && !new URLSearchParams(location.search).has('lokaal');
 

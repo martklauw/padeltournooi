@@ -192,6 +192,14 @@ textarea { resize: vertical; min-height: 70px; }
 .blk.mine .nr { color: #fff; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .badges .badge { background: var(--bg-c); border: 1.5px solid var(--c); }
+/* tekstkleur per doelgroep (bijv. wit op een donkere kleur) */
+.blk { color: var(--ink, var(--navy)); }
+.blk .s { color: var(--ink2, var(--muted)); }
+.blk .nr, .tl-card .nr { color: inherit; }
+.badges .badge, .tl-card { color: var(--ink, var(--navy)); }
+.tl-card .meta, .tl-card .warn { color: var(--ink2, var(--muted)); }
+.chip { color: var(--ink, var(--navy)); }
+.chip[aria-pressed="true"] { color: #fff; }
 .werkvorm { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .facts .swatch { margin-right: 6px; }
 .nr-titel { display: grid; grid-template-columns: 80px 1fr; gap: 10px; }

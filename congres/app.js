@@ -15,7 +15,10 @@
   const SCHEMA_KEY = 'rtc2027-schema';     // persoonlijk schema van de bezoeker
 
   /* ===================== Toestand ===================== */
-  let data = normalize(!Cloud.enabled && JSON.parse(localStorage.getItem(DATA_KEY) || 'null') || clone(window.STANDAARD_PROGRAMMA));
+  // Voorbeeldversie: alleen-lezen, zonder database en zonder lokaal bewaarde wijzigingen.
+  const CONFIG = window.CONGRES_CONFIG || {};
+  const VOORBEELD = !!CONFIG.voorbeeld;
+  let data = normalize(!Cloud.enabled && !VOORBEELD && JSON.parse(localStorage.getItem(DATA_KEY) || 'null') || clone(window.STANDAARD_PROGRAMMA));
   let mijn = new Set(JSON.parse(localStorage.getItem(SCHEMA_KEY) || '[]'));
   const filter = { q: '', groepen: new Set(), werkvorm: '', at: '', dur: '', fits: false, win: null };
   let verouderd = false; // online staat nog een oudere versie van het programma
@@ -59,9 +62,9 @@
   const typeInfo = naam => data.typen.find(t => t.naam === naam) || { naam, uitleg: '' };
   // Kleuren per doelgroep, zoals in het programmaboekje (PDF).
   const dgInfo = key => data.doelgroepen.find(g => g.key === key) || { key, naam: 'Overig', omschrijving: '', bg: '#eef0f4', accent: '#8a8fb0' };
-  const kleurVars = s => { const g = dgInfo(typeof s === 'string' ? s : s.doelgroep); return `--c:${g.accent};--bg-c:${g.bg}`; };
+  const kleurVars = s => { const g = dgInfo(typeof s === 'string' ? s : s.doelgroep); return `--c:${g.accent};--bg-c:${g.bg}` + (g.tekst ? `;--ink:${g.tekst};--ink2:${g.tekst}d9` : ''); };
   const nrTitel = s => (s.nr ? `<span class="nr">${esc(s.nr)}.</span> ` : '') + esc(s.titel);
-  const editable = () => !Cloud.enabled || Cloud.canEdit();
+  const editable = () => !VOORBEELD && (!Cloud.enabled || Cloud.canEdit());
 
   function bewaarSchema() { localStorage.setItem(SCHEMA_KEY, JSON.stringify([...mijn])); }
   function mijnSessies() { return [...mijn].map(id => BY_ID[id]).filter(Boolean).sort((a, b) => a.start - b.start); }
@@ -130,7 +133,7 @@
   function renderChips() {
     const gebruikt = data.doelgroepen.filter(g => SESSIES.some(x => x.doelgroep === g.key));
     $('#typechips').innerHTML = `<span class="chips-label">Doelgroep:</span>` + gebruikt.map(g => `
-      <button class="chip" data-groep="${esc(g.key)}" aria-pressed="${filter.groepen.has(g.key)}" style="--c:${g.accent};--bg-c:${g.bg}" title="${esc(g.omschrijving)}">
+      <button class="chip" data-groep="${esc(g.key)}" aria-pressed="${filter.groepen.has(g.key)}" style="${kleurVars(g.key)}" title="${esc(g.omschrijving)}">
         <span class="dot"></span>${esc(g.naam)} <small>(${SESSIES.filter(x => x.doelgroep === g.key).length})</small></button>`).join('');
     $('#nb').textContent = data.info.nb ? 'NB: ' + data.info.nb : '';
     const sel = $('#werkvorm'), cur = filter.werkvorm;
@@ -238,6 +241,7 @@
   function renderCloud() {
     document.body.classList.toggle('editor', editable());
     const bar = $('#cloudBar');
+    if (VOORBEELD) { bar.innerHTML = `<span class="cloud-user">Voorbeeldversie</span>${CONFIG.vergelijkUrl ? `<a class="btn ghost small" href="${esc(CONFIG.vergelijkUrl)}">Huidige site</a>` : ''}`; return; }
     if (!Cloud.enabled) { bar.innerHTML = '<span class="cloud-user" title="Wijzigingen worden alleen in deze browser bewaard">Lokale versie</span>'; return; }
     const st = Cloud.status(), u = Cloud.user();
     const dot = st === 'error' ? '⚠️ Offline' : st !== 'live' ? 'Verbinden…' : Cloud.canEdit() ? '<span class="dot-live"></span>Live' : '';
@@ -868,7 +872,7 @@
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
       const W = 210, H = 297, L = 16, R = W - 16;
       const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-      const NAVY = hex('#2f335b'), PINK = hex('#c70a64'), BLUE = hex('#0090ad'), MUTED = hex('#6b6f8e'), TPINK = hex('#e9bfd1');
+      const NAVY = hex('#2f335b'), PINK = hex('#c70a64'), BLUE = hex('#0090ad'), MUTED = hex(CONFIG.pdfGrijs || '#6b6f8e'), TPINK = hex('#e9bfd1');
       const i = data.info;
       const datum = i.datum ? new Date(i.datum + 'T12:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
@@ -897,7 +901,7 @@
       let cursor = DAG_START;
       const vrij = (a, b) => {
         if (y > H - 30) { voet(); doc.addPage(); y = 20; }
-        doc.setDrawColor(...hex('#d9e6ea')); doc.setLineDashPattern([1.2, 1.2], 0);
+        doc.setDrawColor(...hex(CONFIG.pdfLijn || '#d9e6ea')); doc.setLineDashPattern([1.2, 1.2], 0);
         doc.roundedRect(L + 24, y - 4, R - L - 24, 9, 2, 2, 'S'); doc.setLineDashPattern([], 0);
         regel(`Vrij: ${fmt(a)} – ${fmt(b)}`, 9, 'normal', MUTED, L + 28, y + 1.8);
         y += 13;

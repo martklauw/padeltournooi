@@ -1,7 +1,7 @@
 // Programma Rijke Taal Congres 2027, overgenomen uit "Programma rijke taal congres 2027.pdf" (leidend document).
 // Wordt gebruikt zolang er nog geen nieuwere versie online staat, en als basis voor de lokale versie.
 window.STANDAARD_PROGRAMMA = {
- "versie": 2,
+ "versie": 3,
  "info": {
   "naam": "Rijke Taal Congres 2027",
   "ondertitel": "Taal is van ons allemaal",
@@ -1003,7 +1003,7 @@ window.STANDAARD_PROGRAMMA = {
    "spreker": "Remko Appel",
    "doelgroep": "op_oop_13",
    "sprekerDetail": "Remko Appel",
-   "beschrijving": "kinderen, ook op het gebied van taal.\n\nDe spelles had jarenlang een vaste plek in het kleuteronderwijs, maar is op veel scholen uit het aanbod verdwenen. En dat terwijl zang- en tikspelen volop kansen bieden voor de ontwikkeling van jonge In deze actieve workshop ontdek je hoe taal, muziek, beweging en spel samenkomen in een betekenisvolle spelles. We gaan zelf zingen, bewegen en spelen en staan stil bij de kansen voor woordenschat, taalbegrip, luistervaardigheid, ritme en mondelinge taalontwikkeling.\n\nJe gaat naar huis met praktische ideeën om de spelles (opnieuw) een plek te geven in je eigen groep."
+   "beschrijving": "De spelles had jarenlang een vaste plek in het kleuteronderwijs, maar is op veel scholen uit het aanbod verdwenen. En dat terwijl zang- en tikspelen volop kansen bieden voor de ontwikkeling van jonge kinderen, ook op het gebied van taal.\n\nIn deze actieve workshop ontdek je hoe taal, muziek, beweging en spel samenkomen in een betekenisvolle spelles. We gaan zelf zingen, bewegen en spelen en staan stil bij de kansen voor woordenschat, taalbegrip, luistervaardigheid, ritme en mondelinge taalontwikkeling.\n\nJe gaat naar huis met praktische ideeën om de spelles (opnieuw) een plek te geven in je eigen groep."
   },
   {
    "id": "s62",
@@ -1016,7 +1016,7 @@ window.STANDAARD_PROGRAMMA = {
    "spreker": "Remko Appel",
    "doelgroep": "op_oop_13",
    "sprekerDetail": "Remko Appel",
-   "beschrijving": "kinderen, ook op het gebied van taal.\n\nDe spelles had jarenlang een vaste plek in het kleuteronderwijs, maar is op veel scholen uit het aanbod verdwenen. En dat terwijl zang- en tikspelen volop kansen bieden voor de ontwikkeling van jonge In deze actieve workshop ontdek je hoe taal, muziek, beweging en spel samenkomen in een betekenisvolle spelles. We gaan zelf zingen, bewegen en spelen en staan stil bij de kansen voor woordenschat, taalbegrip, luistervaardigheid, ritme en mondelinge taalontwikkeling.\n\nJe gaat naar huis met praktische ideeën om de spelles (opnieuw) een plek te geven in je eigen groep."
+   "beschrijving": "De spelles had jarenlang een vaste plek in het kleuteronderwijs, maar is op veel scholen uit het aanbod verdwenen. En dat terwijl zang- en tikspelen volop kansen bieden voor de ontwikkeling van jonge kinderen, ook op het gebied van taal.\n\nIn deze actieve workshop ontdek je hoe taal, muziek, beweging en spel samenkomen in een betekenisvolle spelles. We gaan zelf zingen, bewegen en spelen en staan stil bij de kansen voor woordenschat, taalbegrip, luistervaardigheid, ritme en mondelinge taalontwikkeling.\n\nJe gaat naar huis met praktische ideeën om de spelles (opnieuw) een plek te geven in je eigen groep."
   },
   {
    "id": "s63",
