@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amaranth:ital,wght@0,400;0,700;1,400&display=swap">
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
   <header class="topbar">
@@ -15,8 +15,6 @@
     <nav class="tabs" role="tablist">
       <button data-view="grid">Blokkenschema</button>
       <button data-view="list">Alle sessies</button>
-      <button data-view="sprekers">Sprekers</button>
-      <button data-view="over">Over ons</button>
       <button data-view="my">Mijn schema <span class="count" id="mycount">0</span></button>
       <button data-view="beheer" class="only-editor">Beheer</button>
     </nav>
@@ -48,7 +46,8 @@
 
     <section class="card filterbar" id="filters">
       <div class="filters">
-        <input type="search" id="q" placeholder="Zoek op titel, spreker, organisatie of zaal…" aria-label="Zoeken">
+        <input type="search" id="q" placeholder="Zoek op nummer, titel, spreker of zaal…" aria-label="Zoeken">
+        <select id="werkvorm" aria-label="Werkvorm"><option value="">Elke werkvorm</option></select>
         <select id="at" aria-label="Bezig om"><option value="">Elk tijdstip</option></select>
         <select id="dur" aria-label="Duur">
           <option value="">Elke duur</option>
@@ -60,6 +59,7 @@
         <button class="linkbtn" id="reset">Wis filters</button>
       </div>
       <div class="chips" id="typechips"></div>
+      <p class="nb" id="nb"></p>
     </section>
 
     <section id="view-grid" class="view card">
@@ -94,15 +94,7 @@
       </div>
     </section>
 
-    <section id="view-sprekers" class="view"></section>
 
-    <section id="view-over" class="view">
-      <div class="card over">
-        <img src="../img/boor-logo.png" alt="BOOR – kwaliteit in onderwijs" class="over-logo">
-        <h2>Over ons</h2>
-        <div class="rich" id="overTekst"></div>
-      </div>
-    </section>
 
     <section id="view-beheer" class="view"></section>
   </main>
@@ -115,8 +107,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-  <script src="programma.js?v=6"></script>
-  <script src="cloud.js?v=9"></script>
-  <script src="app.js?v=9"></script>
+  <script src="programma.js?v=10"></script>
+  <script src="cloud.js?v=10"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

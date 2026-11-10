@@ -1,16 +1,5 @@
 // Congresprogramma: blokkenschema, sessielijst, persoonlijk schema en beheer.
 (() => {
-  /* ===================== Huisstijlkleuren voor sessietypes ===================== */
-  const PALET = {
-    navy:     { naam: 'Donkerblauw', c: '#2f335b', bg: '#e2e3ee' },
-    roze:     { naam: 'BOOR roze',   c: '#c70a64', bg: '#f7dde9' },
-    blauw:    { naam: 'BOOR blauw',  c: '#0090ad', bg: '#d6eef3' },
-    oranje:   { naam: 'Tint oranje', c: '#fac075', bg: '#feecd3' },
-    groen:    { naam: 'Tint groen',  c: '#b0ddae', bg: '#e5f4e4' },
-    geel:     { naam: 'Tint geel',   c: '#f0e67b', bg: '#faf6d2' },
-    tintroze: { naam: 'Tint roze',   c: '#e9bfd1', bg: '#f6e8ee' },
-  };
-
   /* ===================== Hulpfuncties ===================== */
   const $ = s => document.querySelector(s);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -28,18 +17,22 @@
   /* ===================== Toestand ===================== */
   let data = normalize(!Cloud.enabled && JSON.parse(localStorage.getItem(DATA_KEY) || 'null') || clone(window.STANDAARD_PROGRAMMA));
   let mijn = new Set(JSON.parse(localStorage.getItem(SCHEMA_KEY) || '[]'));
-  const filter = { q: '', types: new Set(), at: '', dur: '', fits: false, win: null };
+  const filter = { q: '', groepen: new Set(), werkvorm: '', at: '', dur: '', fits: false, win: null };
+  let verouderd = false; // online staat nog een oudere versie van het programma
   let view = 'grid';
   let openId = null;
   let SESSIES = [], BY_ID = {}, DAG_START = 660, DAG_EIND = 930, DAG_LEN = 270;
 
   function normalize(d) {
     d = d || {};
-    d.info = Object.assign({ naam: 'Congres', ondertitel: '', datum: '', locatie: '', intro: '', overOns: window.STANDAARD_PROGRAMMA.info?.overOns || '' }, d.info || {});
+    const STD = window.STANDAARD_PROGRAMMA;
+    d.versie = d.versie || 1;
+    d.info = Object.assign({ naam: 'Congres', ondertitel: '', datum: '', locatie: '', intro: '', nb: STD.info?.nb || '' }, d.info || {});
+    delete d.info.overOns;
+    if (!Array.isArray(d.doelgroepen) || !d.doelgroepen.length) d.doelgroepen = clone(STD.doelgroepen || []);
     d.typen = Array.isArray(d.typen) ? d.typen : [];
     d.zalen = Array.isArray(d.zalen) ? d.zalen : [];
-    if (!Array.isArray(d.sprekers)) d.sprekers = clone(window.STANDAARD_PROGRAMMA.sprekers || []);
-    d.sprekers = d.sprekers.filter(x => x && x.naam).map(x => ({ zoek: x.naam, organisatie: '', status: 'concept', bio: '', bronnen: [], ...x }));
+    delete d.sprekers;
     d.sessies = (Array.isArray(d.sessies) ? d.sessies : []).filter(s => s && s.id && validTime(s.start) && validTime(s.eind));
     return d;
   }
@@ -52,7 +45,7 @@
       return {
         ...s, start, eind, duur: eind - start, cap: cap[s.zaal],
         key: norm(s.titel + '|' + s.spreker),
-        zoek: norm([s.titel, s.type, s.spreker, s.zaal, s.samenvatting, s.beschrijving, s.doelgroep].join(' ')),
+        zoek: norm([s.nr, s.titel, s.type, s.spreker, s.sprekerDetail, s.zaal, s.samenvatting, s.beschrijving, s.voorWie, dgInfo(s.doelgroep).naam].join(' ')),
       };
     }).sort((a, b) => a.start - b.start || (zaalIdx[a.zaal] ?? 99) - (zaalIdx[b.zaal] ?? 99));
     BY_ID = Object.fromEntries(SESSIES.map(s => [s.id, s]));
@@ -63,10 +56,11 @@
     DAG_LEN = Math.max(30, DAG_EIND - DAG_START);
   }
 
-  const sprekersVan = s => data.sprekers.filter(x => x.zoek && norm(s.spreker).includes(norm(x.zoek)));
-  const sprekerAnker = x => 'spreker-' + norm(x.naam).replace(/[^a-z0-9]+/g, '-');
-  const typeInfo = naam => data.typen.find(t => t.naam === naam) || { naam, kleur: 'navy', uitleg: '' };
-  const kleurVars = type => { const p = PALET[typeInfo(type).kleur] || PALET.navy; return `--c:${p.c};--bg-c:${p.bg}`; };
+  const typeInfo = naam => data.typen.find(t => t.naam === naam) || { naam, uitleg: '' };
+  // Kleuren per doelgroep, zoals in het programmaboekje (PDF).
+  const dgInfo = key => data.doelgroepen.find(g => g.key === key) || { key, naam: 'Overig', omschrijving: '', bg: '#eef0f4', accent: '#8a8fb0' };
+  const kleurVars = s => { const g = dgInfo(typeof s === 'string' ? s : s.doelgroep); return `--c:${g.accent};--bg-c:${g.bg}`; };
+  const nrTitel = s => (s.nr ? `<span class="nr">${esc(s.nr)}.</span> ` : '') + esc(s.titel);
   const editable = () => !Cloud.enabled || Cloud.canEdit();
 
   function bewaarSchema() { localStorage.setItem(SCHEMA_KEY, JSON.stringify([...mijn])); }
@@ -75,7 +69,8 @@
 
   function past(s) {
     if (filter.q && !filter.q.split(/\s+/).every(w => s.zoek.includes(w))) return false;
-    if (filter.types.size && !filter.types.has(s.type)) return false;
+    if (filter.groepen.size && !filter.groepen.has(s.doelgroep)) return false;
+    if (filter.werkvorm && s.type !== filter.werkvorm) return false;
     if (filter.at) { const t = +filter.at; if (!(s.start <= t && t < s.eind)) return false; }
     if (filter.dur) { const d = +filter.dur; if (d === 61 ? s.duur <= 60 : s.duur > d) return false; }
     if (filter.win && !(s.start >= filter.win[0] && s.eind <= filter.win[1])) return false;
@@ -133,10 +128,14 @@
   }
 
   function renderChips() {
-    const used = data.typen.filter(t => SESSIES.some(s => s.type === t.naam));
-    $('#typechips').innerHTML = used.map(t => `
-      <button class="chip" data-type="${esc(t.naam)}" aria-pressed="${filter.types.has(t.naam)}" style="${kleurVars(t.naam)}">
-        <span class="dot"></span>${esc(t.naam)} <small>(${SESSIES.filter(s => s.type === t.naam).length})</small></button>`).join('');
+    const gebruikt = data.doelgroepen.filter(g => SESSIES.some(x => x.doelgroep === g.key));
+    $('#typechips').innerHTML = `<span class="chips-label">Doelgroep:</span>` + gebruikt.map(g => `
+      <button class="chip" data-groep="${esc(g.key)}" aria-pressed="${filter.groepen.has(g.key)}" style="--c:${g.accent};--bg-c:${g.bg}" title="${esc(g.omschrijving)}">
+        <span class="dot"></span>${esc(g.naam)} <small>(${SESSIES.filter(x => x.doelgroep === g.key).length})</small></button>`).join('');
+    $('#nb').textContent = data.info.nb ? 'NB: ' + data.info.nb : '';
+    const sel = $('#werkvorm'), cur = filter.werkvorm;
+    const vormen = [...new Set(SESSIES.map(x => x.type).filter(Boolean))].sort((x, y) => x.localeCompare(y, 'nl'));
+    sel.innerHTML = '<option value="">Elke werkvorm</option>' + vormen.map(v => `<option ${v === cur ? 'selected' : ''}>${esc(v)}</option>`).join('');
   }
 
   function renderTimes() {
@@ -151,9 +150,9 @@
     const clash = !isMine && botsingen(s).length > 0;
     const cls = ['blk', isMine && 'mine', clash && 'clash', !past(s) && 'dim'].filter(Boolean).join(' ');
     const left = (s.start - DAG_START) / DAG_LEN * 100, width = s.duur / DAG_LEN * 100;
-    return `<button class="${cls}" data-open="${s.id}" style="${kleurVars(s.type)};left:calc(${left}% + 2px);width:calc(${width}% - 4px)"
-      title="${esc(`${fmt(s.start)}–${fmt(s.eind)} · ${s.titel} · ${s.spreker}`)}">
-      <div class="t">${esc(s.titel)}</div><div class="s">${fmt(s.start)}–${fmt(s.eind)} · ${esc(s.spreker)}</div></button>`;
+    return `<button class="${cls}" data-open="${s.id}" style="${kleurVars(s)};left:calc(${left}% + 2px);width:calc(${width}% - 4px)"
+      title="${esc(`${s.nr ? s.nr + '. ' : ''}${fmt(s.start)}–${fmt(s.eind)} · ${s.titel}${s.spreker ? ' · ' + s.spreker : ''} · ${dgInfo(s.doelgroep).omschrijving}`)}">
+      <div class="t">${nrTitel(s)}</div><div class="s">${fmt(s.start)}–${fmt(s.eind)}${s.spreker ? ' · ' + esc(s.spreker) : ''}</div></button>`;
   }
 
   function renderGrid() {
@@ -186,12 +185,12 @@
     $('#list').innerHTML = lijst.map(s => {
       const b = mijn.has(s.id) ? [] : botsingen(s);
       const herhaling = SESSIES.filter(x => x.key === s.key && x.id !== s.id);
-      return `<article class="scard" style="${kleurVars(s.type)}">
-        <div><span class="badge">${esc(s.type)}</span></div>
-        <h3><button data-open="${s.id}">${esc(s.titel)}</button></h3>
+      return `<article class="scard" style="${kleurVars(s)}">
+        <div class="badges"><span class="badge">${esc(dgInfo(s.doelgroep).naam)}</span>${s.type ? `<span class="werkvorm">${esc(s.type)}</span>` : ''}</div>
+        <h3><button data-open="${s.id}">${nrTitel(s)}</button></h3>
         <div class="meta"><span>🕒 ${fmt(s.start)}–${fmt(s.eind)} (${s.duur} min)</span><span>📍 ${esc(s.zaal)}${s.cap ? ` · ${s.cap} pl.` : ''}</span></div>
-        <div class="meta"><span>👤 ${esc(s.spreker)}</span></div>
-        ${s.samenvatting ? `<p class="summary">${esc(s.samenvatting)}</p>` : ''}
+        ${s.spreker ? `<div class="meta"><span>👤 ${esc(s.spreker)}</span></div>` : ''}
+        ${s.samenvatting || s.beschrijving ? `<p class="summary">${esc(s.samenvatting || s.beschrijving.replace(/\*\*|^- /gm, ''))}</p>` : ''}
         ${s.fotoId || s.video ? `<div class="meta">${s.fotoId ? '<span>📷 Met foto</span>' : ''}${s.video ? '<span>🎬 Met video</span>' : ''}</div>` : ''}
         ${herhaling.length ? `<div class="meta"><span>🔁 Ook om ${herhaling.map(h => fmt(h.start)).join(', ')}</span></div>` : ''}
         ${b.length ? `<div class="warn">⚠️ Botst met: ${b.map(x => esc(x.titel)).join(', ')}</div>` : ''}
@@ -218,9 +217,9 @@
       if (s.start > cursor) html += gapHTML(cursor, s.start);
       const b = botsingen(s);
       html += `<div class="tl-item"><div class="when">${fmt(s.start)}</div>
-        <div class="tl-card ${b.length ? 'clash' : ''}" style="${kleurVars(s.type)}">
-          <div><span class="badge" style="background:#fff">${esc(s.type)}</span>
-            <div><button class="title" data-open="${s.id}">${esc(s.titel)}</button></div>
+        <div class="tl-card ${b.length ? 'clash' : ''}" style="${kleurVars(s)}">
+          <div><span class="badge" style="background:#fff">${esc(dgInfo(s.doelgroep).naam)}${s.type ? ' · ' + esc(s.type) : ''}</span>
+            <div><button class="title" data-open="${s.id}">${nrTitel(s)}</button></div>
             <div class="meta"><span>${fmt(s.start)}–${fmt(s.eind)}</span><span>📍 ${esc(s.zaal)}</span><span>👤 ${esc(s.spreker)}</span></div>
             ${b.length ? `<div class="warn">⚠️ Overlapt met ${b.map(x => esc(x.titel)).join(', ')}</div>` : ''}
           </div>
@@ -252,40 +251,9 @@
     renderCloud(); renderHero(); renderChips(); renderGrid(); renderList(); renderMy();
     renderBeheer();
     document.querySelectorAll('.tabs [data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-    renderSprekers();
-    $('#overTekst').innerHTML = opmaak(data.info.overOns) || '<p class="hint">Nog geen tekst.</p>';
-    ['grid', 'list', 'sprekers', 'over', 'my', 'beheer'].forEach(v => { $('#view-' + v).hidden = v !== view; });
+    ['grid', 'list', 'my', 'beheer'].forEach(v => { $('#view-' + v).hidden = v !== view; });
     $('#filters').hidden = !(view === 'grid' || view === 'list');
     if ($('#modal').open && openId) openDetail(openId);
-  }
-
-  /* ===================== Sprekers ===================== */
-  let sprekerZoek = '';
-  function renderSprekers() {
-    const el = $('#view-sprekers');
-    const q = norm(sprekerZoek);
-    const lijst = [...data.sprekers]
-      .map(x => ({ x, sessies: SESSIES.filter(s => norm(s.spreker).includes(norm(x.zoek))) }))
-      .filter(({ x, sessies }) => sessies.length && (!q || norm([x.naam, x.organisatie, x.bio, ...sessies.map(s => s.titel)].join(' ')).includes(q)))
-      .sort((a, b) => a.x.naam.localeCompare(b.x.naam, 'nl'));
-    const kaarten = lijst.map(({ x, sessies }) => `
-      <article class="spreker" id="${sprekerAnker(x)}">
-        <div class="spreker-kop">
-          <div class="avatar" aria-hidden="true">${esc(x.naam.split(/\s+/).filter(w => /^[A-ZÀ-Ý]/.test(w)).slice(0, 2).map(w => w[0]).join('') || x.naam[0])}</div>
-          <div><h3>${esc(x.naam)}</h3>${x.organisatie ? `<div class="meta">${esc(x.organisatie)}</div>` : ''}</div>
-        </div>
-        ${x.bio ? `<div class="rich">${opmaak(x.bio)}</div>` : '<p class="hint">Meer informatie volgt.</p>'}
-        <div class="spreker-sessies">${sessies.map(s => `<button class="sessie-chip" data-open="${s.id}" style="${kleurVars(s.type)}">
-          <b>${fmt(s.start)}</b> ${esc(s.titel)} <span>· ${esc(s.zaal)}</span></button>`).join('')}</div>
-      </article>`).join('');
-    const lijstHTML = kaarten || '<div class="empty">Geen sprekers gevonden.</div>';
-    if ($('#sprekerLijst') && el.contains(document.activeElement)) { $('#sprekerLijst').innerHTML = lijstHTML; return; }
-    el.innerHTML = `
-      <div class="card filterbar"><div class="filters">
-        <input type="search" id="sprekerZoek" placeholder="Zoek een spreker, organisatie of onderwerp…" value="${esc(sprekerZoek)}">
-        <span class="hint" style="margin:0">${lijst.length} sprekers en organisaties</span>
-      </div></div>
-      <div class="sprekers" id="sprekerLijst">${lijstHTML}</div>`;
   }
 
   /* ===================== Detailvenster ===================== */
@@ -300,9 +268,9 @@
     const parallel = SESSIES.filter(x => x.id !== s.id && overlap(x, s)).length;
     const altRij = x => `<div class="alt"><span><b>${fmt(x.start)}–${fmt(x.eind)}</b> · ${esc(x.zaal)}${x.key !== s.key ? ` · <button class="linkbtn" style="padding:0" data-open="${x.id}">${esc(x.titel)}</button>` : ''}</span>${knop(x)}</div>`;
     $('#modal-content').innerHTML = `
-      <div class="m-head" style="${kleurVars(s.type)}">
-        <span class="badge">${esc(s.type)}</span>
-        <h2>${esc(s.titel)}</h2>
+      <div class="m-head" style="${kleurVars(s)}">
+        <div class="badges"><span class="badge">${esc(dgInfo(s.doelgroep).naam)}</span>${s.type ? `<span class="werkvorm">${esc(s.type)}</span>` : ''}</div>
+        <h2>${nrTitel(s)}</h2>
         <button class="m-close" data-close aria-label="Sluiten">✕</button>
       </div>
       ${s.fotoId ? '<div class="m-photo" id="mFoto"><div class="photo-ph"></div></div>' : ''}
@@ -310,22 +278,22 @@
         <dl class="facts">
           <dt>Tijd</dt><dd>${fmt(s.start)} – ${fmt(s.eind)} uur (${s.duur} minuten)</dd>
           <dt>Zaal</dt><dd>${esc(s.zaal)}${s.cap ? ` · ${s.cap} plaatsen` : ''}</dd>
-          <dt>Door</dt><dd>${esc(s.spreker)}${sprekersVan(s).length ? ` · <button class="linkbtn" style="padding:0" data-spreker="${esc(sprekersVan(s)[0].naam)}">over de spreker</button>` : ''}</dd>
+          ${s.sprekerDetail || s.spreker ? `<dt>Door</dt><dd>${esc(s.sprekerDetail || s.spreker)}</dd>` : ''}
+          <dt>Doelgroep</dt><dd><span class="swatch" style="${kleurVars(s)}"></span>${esc(dgInfo(s.doelgroep).omschrijving || dgInfo(s.doelgroep).naam)}</dd>
         </dl>
         ${s.samenvatting ? `<p class="lead">${esc(s.samenvatting)}</p>` : ''}
         ${s.beschrijving ? `<div class="rich">${opmaak(s.beschrijving)}</div>` : ''}
-        ${s.doelgroep ? `<h4>Voor wie</h4><div class="rich">${opmaak(s.doelgroep)}</div>` : ''}
+        ${s.voorWie ? `<h4>Voor wie</h4><div class="rich">${opmaak(s.voorWie)}</div>` : ''}
         ${videoEmbed(s.video) ? `<h4>Video</h4><div class="video"><iframe src="${esc(videoEmbed(s.video))}" title="Video bij ${esc(s.titel)}" loading="lazy" allow="fullscreen; picture-in-picture; encrypted-media" allowfullscreen></iframe></div>` : ''}
-        ${s.sprekerInfo ? `<h4>Over ${esc(s.spreker)}</h4><div class="rich">${opmaak(s.sprekerInfo)}</div>`
-          : sprekersVan(s).filter(x => x.bio).map(x => `<h4>Over ${esc(x.naam)}</h4><div class="rich">${opmaak(x.bio)}</div>`).join('')}
-        ${info.uitleg ? `<p class="hint"><b>Wat is een ${esc(s.type.toLowerCase())}?</b> ${esc(info.uitleg)}</p>` : ''}
+        ${s.sprekerInfo ? `<h4>Over ${esc(s.spreker)}</h4><div class="rich">${opmaak(s.sprekerInfo)}</div>` : ''}
+        ${info.uitleg && s.type ? `<p class="hint"><b>Wat is een ${esc(s.type.toLowerCase())}?</b> ${esc(info.uitleg)}</p>` : ''}
         ${b.length ? `<div class="clashbox">⚠️ Deze sessie overlapt met je keuze: <b>${b.map(x => esc(x.titel) + ` (${fmt(x.start)}–${fmt(x.eind)})`).join(', ')}</b>.
            <div style="margin-top:8px"><button class="btn pink" data-replace="${s.id}">Vervang door deze sessie</button></div></div>` : ''}
         <div class="inline" style="margin-top:12px">${knop(s)}
           <button class="btn ghost" data-attime="${s.start}">Alles om ${fmt(s.start)} (${parallel} parallel)</button>
           ${editable() ? `<button class="btn ghost" data-edit="${s.id}">✏️ Bewerken</button>` : ''}</div>
         ${anderen.length ? `<h4>Deze sessie wordt ook gegeven om</h4>${anderen.map(altRij).join('')}` : '<h4>Eenmalig</h4><p class="hint">Deze sessie wordt maar één keer gegeven.</p>'}
-        ${zelfdeSpreker.length ? `<h4>Meer van ${esc(s.spreker)}</h4>${zelfdeSpreker.map(altRij).join('')}` : ''}
+        ${zelfdeSpreker.length && s.spreker ? `<h4>Meer van ${esc(s.spreker)}</h4>${zelfdeSpreker.map(altRij).join('')}` : ''}
       </div>`;
     $('#modal').classList.remove('wide');
     if (!$('#modal').open) $('#modal').showModal();
@@ -457,7 +425,7 @@
     const lijst = SESSIES.filter(s => !zq || s.zoek.includes(zq));
     const typeOpts = sel => data.typen.map(t => `<option ${t.naam === sel ? 'selected' : ''}>${esc(t.naam)}</option>`).join('');
     el.innerHTML = `
-      ${Cloud.enabled && Cloud.remoteEmpty() ? `<div class="alert">Het programma staat nog niet online; bezoekers zien nu het standaardprogramma. <button class="btn small primary" data-publish>Nu online zetten</button></div>` : ''}
+      ${Cloud.enabled && (Cloud.remoteEmpty() || verouderd) ? `<div class="alert">${verouderd ? 'Online staat nog het oude programma. Bezoekers zien al het nieuwe programma uit het programmaboekje (PDF); zet het online om het definitief te maken. Datum en locatie blijven behouden.' : 'Het programma staat nog niet online; bezoekers zien nu het standaardprogramma.'} <button class="btn small primary" data-publish>Nu online zetten</button></div>` : ''}
       ${!Cloud.enabled ? '<div class="alert">Lokale versie: wijzigingen worden alleen in deze browser bewaard. Open de online versie om voor iedereen te publiceren.</div>' : ''}
       <div class="beheer">
         <section class="card">
@@ -470,8 +438,7 @@
             <label class="field">Locatie<input type="text" data-info="locatie" value="${esc(i.locatie)}"></label>
           </div>
           <label class="field">Introductietekst<textarea data-info="intro">${esc(i.intro)}</textarea></label>
-          <label class="field">Pagina "Over ons"<textarea data-info="overOns" rows="10">${esc(i.overOns)}</textarea>
-            <small class="hint">Opmaak: "## " aan het begin van een regel = tussenkopje · lege regel = nieuwe alinea · "- " = opsomming · **vet**.</small></label>
+          <label class="field">Toelichting bij de doelgroepen (NB)<textarea data-info="nb" rows="2">${esc(i.nb)}</textarea></label>
         </section>
 
         <section class="card" id="adminsCard">${adminsHTML()}</section>
@@ -486,18 +453,20 @@
           </div>
           <div class="tbl-scroll">
             <table class="tbl">
-              <thead><tr><th>Tijd</th><th>Zaal</th><th>Titel</th><th>Type</th><th>Spreker</th><th>Uitleg</th><th></th></tr></thead>
+              <thead><tr><th>Nr</th><th>Tijd</th><th>Zaal</th><th>Titel</th><th>Doelgroep</th><th>Werkvorm</th><th>Spreker</th><th>Uitleg</th><th></th></tr></thead>
               <tbody>${lijst.map(s => `
                 <tr>
+                  <td class="nowrap"><b>${esc(s.nr || '')}</b></td>
                   <td class="nowrap">${fmt(s.start)}–${fmt(s.eind)}</td>
                   <td class="nowrap">${esc(s.zaal)}</td>
                   <td><b>${esc(s.titel)}</b></td>
-                  <td class="nowrap"><span class="swatch" style="${kleurVars(s.type)}"></span>${esc(s.type)}</td>
+                  <td class="nowrap"><span class="swatch" style="${kleurVars(s)}"></span>${esc(dgInfo(s.doelgroep).naam)}</td>
+                  <td class="nowrap">${esc(s.type)}</td>
                   <td>${esc(s.spreker)}</td>
                   <td class="nowrap" title="Uitleg / foto / video">${[s.samenvatting || s.beschrijving ? '📝' : '', s.fotoId ? '📷' : '', s.video ? '🎬' : ''].join(' ').trim() || '<span class="hint">–</span>'}</td>
                   <td class="nowrap"><button class="btn small ghost" data-edit="${s.id}">Bewerken</button>
                     <button class="icon-btn" data-del="${s.id}" title="Verwijderen">✕</button></td>
-                </tr>`).join('') || '<tr><td colspan="7" class="empty">Geen sessies.</td></tr>'}
+                </tr>`).join('') || '<tr><td colspan="9" class="empty">Geen sessies.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -520,14 +489,13 @@
         </section>
 
         <section class="card">
-          <div class="card-head"><h2>Sessietypes</h2><button class="btn small" data-addtype>+ Type</button></div>
+          <div class="card-head"><h2>Werkvormen</h2><button class="btn small" data-addtype>+ Type</button></div>
           <table class="tbl">
-            <thead><tr><th>Naam</th><th>Kleur</th><th>Uitleg voor bezoekers</th><th></th></tr></thead>
+            <thead><tr><th>Naam</th><th>Uitleg voor bezoekers</th><th></th></tr></thead>
             <tbody>${data.typen.map((t, idx) => {
               const n = data.sessies.filter(s => s.type === t.naam).length;
               return `<tr>
                 <td style="width:30%"><input type="text" data-typ="${idx}" data-field="naam" value="${esc(t.naam)}"></td>
-                <td style="width:130px"><select data-typ="${idx}" data-field="kleur">${Object.entries(PALET).map(([k, p]) => `<option value="${k}" ${k === t.kleur ? 'selected' : ''}>${p.naam}</option>`).join('')}</select></td>
                 <td><textarea data-typ="${idx}" data-field="uitleg" rows="2" style="min-height:0">${esc(t.uitleg)}</textarea></td>
                 <td><button class="icon-btn" data-deltype="${idx}" ${n ? 'disabled title="Type is nog in gebruik"' : 'title="Verwijderen"'}>✕</button></td>
               </tr>`; }).join('')}
@@ -536,39 +504,18 @@
         </section>
 
         <section class="card span-2">
-          <div class="card-head">
-            <h2>Sprekers (${data.sprekers.length})</h2>
-            <div class="inline">
-              <button class="btn small" data-sprekersaanvullen title="Maakt een kopje aan voor elke spreker in het programma die er nog geen heeft">Ontbrekende sprekers aanmaken</button>
-              <button class="btn small" data-addspreker>+ Spreker</button>
-            </div>
-          </div>
-          <p class="hint">De teksten zijn een eerste opzet op basis van openbare bronnen. <b>Concept</b> = weinig online gevonden, aanvullen met info van de spreker. <b>Controleren</b> = check of de bron over dezelfde persoon gaat. Zet de status op <b>Gecontroleerd</b> als de tekst klopt. Het veld "Koppelen aan" bepaalt bij welke sessies de spreker hoort (tekst die in het sprekersveld van de sessie voorkomt).</p>
-          <div class="tbl-scroll">
-            <table class="tbl">
-              <thead><tr><th>Spreker</th><th>Tekst</th><th>Status &amp; bronnen</th><th></th></tr></thead>
-              <tbody>${[...data.sprekers].map((x, idx) => ({ x, idx })).sort((a, b) => a.x.naam.localeCompare(b.x.naam, 'nl')).map(({ x, idx }) => {
-                const n = SESSIES.filter(s => norm(s.spreker).includes(norm(x.zoek))).length;
-                return `<tr>
-                  <td style="width:22%">
-                    <input type="text" data-spr="${idx}" data-field="naam" value="${esc(x.naam)}" title="Naam">
-                    <input type="text" data-spr="${idx}" data-field="organisatie" value="${esc(x.organisatie)}" placeholder="Organisatie" style="margin-top:4px">
-                    <label class="hint" style="display:block;margin-top:4px">Koppelen aan<input type="text" data-spr="${idx}" data-field="zoek" value="${esc(x.zoek)}"></label>
-                    <span class="hint">${n} sessie(s)</span>
-                  </td>
-                  <td><textarea data-spr="${idx}" data-field="bio" rows="5">${esc(x.bio)}</textarea></td>
-                  <td style="width:20%">
-                    <select data-spr="${idx}" data-field="status">
-                      ${[['concept', 'Concept'], ['controleren', 'Controleren'], ['bron', 'Met bron'], ['gecontroleerd', 'Gecontroleerd']].map(([k, l]) => `<option value="${k}" ${x.status === k ? 'selected' : ''}>${l}</option>`).join('')}
-                    </select>
-                    <span class="status st-${esc(x.status)}"></span>
-                    ${(x.bronnen || []).map((u, i) => `<div><a href="${esc(u)}" target="_blank" rel="noopener" class="hint">bron ${i + 1}</a></div>`).join('')}
-                  </td>
-                  <td><button class="icon-btn" data-delspreker="${idx}" title="Verwijderen">✕</button></td>
-                </tr>`; }).join('')}
-              </tbody>
-            </table>
-          </div>
+          <h2>Doelgroepen</h2>
+          <p class="hint">De indeling en kleuren uit het programmaboekje. Bezoekers filteren hierop; de kleur bepaalt de kleur van de blokken in het schema.</p>
+          <table class="tbl">
+            <thead><tr><th>Korte naam (filter)</th><th>Omschrijving</th><th>Kleur</th><th>Accent</th><th>Sessies</th></tr></thead>
+            <tbody>${data.doelgroepen.map((g, idx) => `<tr>
+              <td style="width:24%"><input type="text" data-dg="${idx}" data-field="naam" value="${esc(g.naam)}"></td>
+              <td><input type="text" data-dg="${idx}" data-field="omschrijving" value="${esc(g.omschrijving)}"></td>
+              <td style="width:70px"><input type="color" data-dg="${idx}" data-field="bg" value="${esc(g.bg)}"></td>
+              <td style="width:70px"><input type="color" data-dg="${idx}" data-field="accent" value="${esc(g.accent)}"></td>
+              <td>${data.sessies.filter(x => x.doelgroep === g.key).length}</td>
+            </tr>`).join('')}</tbody>
+          </table>
         </section>
 
         <section class="card span-2">
@@ -635,12 +582,12 @@
       .catch(e => alert('Toevoegen is niet gelukt: ' + e.message));
   }
 
-  const UITLEG_VELDEN = ['samenvatting', 'beschrijving', 'doelgroep', 'sprekerInfo', 'video', 'fotoId', 'fotoAlt'];
+  const UITLEG_VELDEN = ['samenvatting', 'beschrijving', 'voorWie', 'sprekerInfo', 'video', 'fotoId', 'fotoAlt'];
   let editFoto = null; // null = ongewijzigd, 'weg' = verwijderen, anders de nieuwe foto (data-URL)
 
   function openEditor(id, kopie = false) {
     const bron = id ? data.sessies.find(s => s.id === id) : null;
-    const leeg = { id: '', zaal: data.zalen[0]?.naam || '', start: '11:00', eind: '12:00', titel: '', type: data.typen[0]?.naam || '', spreker: '' };
+    const leeg = { id: '', nr: '', zaal: data.zalen[0]?.naam || '', start: '11:00', eind: '12:00', titel: '', type: data.typen[0]?.naam || '', spreker: '', sprekerDetail: '', doelgroep: data.doelgroepen[0]?.key || '' };
     const s = { ...leeg, ...Object.fromEntries(UITLEG_VELDEN.map(k => [k, ''])), ...(bron || {}) };
     if (kopie) s.id = '';
     editFoto = null;
@@ -653,16 +600,23 @@
           <button type="button" class="m-close" data-close aria-label="Sluiten" style="position:static">✕</button></div>
 
         <h3 class="ed-h">Praktisch</h3>
-        <label class="field">Titel<input type="text" name="titel" required value="${esc(s.titel)}"></label>
+        <div class="nr-titel">
+          <label class="field">Nr<input type="text" name="nr" value="${esc(s.nr)}" maxlength="5"></label>
+          <label class="field">Titel<input type="text" name="titel" required value="${esc(s.titel)}"></label>
+        </div>
+        <label class="field">Doelgroep<select name="doelgroep">${data.doelgroepen.map(g => `<option value="${esc(g.key)}" ${g.key === s.doelgroep ? 'selected' : ''}>${esc(g.omschrijving || g.naam)}</option>`).join('')}</select></label>
         <div class="two">
-          <label class="field">Type<select name="type">${data.typen.map(t => `<option ${t.naam === s.type ? 'selected' : ''}>${esc(t.naam)}</option>`).join('')}</select></label>
+          <label class="field">Werkvorm<select name="type"><option value="">(geen)</option>${data.typen.map(t => `<option ${t.naam === s.type ? 'selected' : ''}>${esc(t.naam)}</option>`).join('')}</select></label>
           <label class="field">Zaal<select name="zaal">${data.zalen.map(z => `<option ${z.naam === s.zaal ? 'selected' : ''}>${esc(z.naam)}</option>`).join('')}</select></label>
         </div>
         <div class="two">
           <label class="field">Begintijd<input type="time" name="start" step="300" required value="${esc(s.start.padStart(5, '0'))}"></label>
           <label class="field">Eindtijd<input type="time" name="eind" step="300" required value="${esc(s.eind.padStart(5, '0'))}"></label>
         </div>
-        <label class="field">Spreker / organisatie<input type="text" name="spreker" value="${esc(s.spreker)}"></label>
+        <div class="two">
+          <label class="field">Spreker <small class="hint">(in het schema)</small><input type="text" name="spreker" value="${esc(s.spreker)}"></label>
+          <label class="field">Spreker met organisatie <small class="hint">(in de uitleg)</small><input type="text" name="sprekerDetail" value="${esc(s.sprekerDetail)}"></label>
+        </div>
 
         <h3 class="ed-h">Uitleg voor bezoekers</h3>
         <label class="field">Korte samenvatting <small class="hint">(1–2 zinnen, zichtbaar in het overzicht)</small>
@@ -670,7 +624,7 @@
         <label class="field">Uitgebreide beschrijving
           <textarea name="beschrijving" rows="8" placeholder="Waar gaat de sessie over, hoe ziet hij eruit en wat neem je mee naar je klas?">${esc(s.beschrijving)}</textarea>
           <small class="hint">Opmaak: lege regel = nieuwe alinea · regel beginnen met "- " = opsomming · **vet** · links worden klikbaar.</small></label>
-        <label class="field">Voor wie is deze sessie? <textarea name="doelgroep" rows="2" style="min-height:0" placeholder="Bijvoorbeeld: leerkrachten groep 1-3, intern begeleiders">${esc(s.doelgroep)}</textarea></label>
+        <label class="field">Voor wie is deze sessie? <small class="hint">(optioneel, aanvullend op de doelgroep)</small><textarea name="voorWie" rows="2" style="min-height:0" placeholder="Bijvoorbeeld: leerkrachten groep 4 t/m 8">${esc(s.voorWie)}</textarea></label>
         <label class="field">Over de spreker <textarea name="sprekerInfo" rows="3" style="min-height:0">${esc(s.sprekerInfo)}</textarea></label>
 
         <h3 class="ed-h">Foto en video</h3>
@@ -787,14 +741,7 @@
     if (d.replace) return toggle(d.replace, { vervang: true });
     if (d.open) return openDetail(d.open);
     if ('close' in d) return $('#modal').close();
-    if (d.type) { filter.types.has(d.type) ? filter.types.delete(d.type) : filter.types.add(d.type); return render(); }
-    if (d.spreker) {
-      $('#modal').close(); view = 'sprekers'; sprekerZoek = ''; render();
-      const x = data.sprekers.find(y => y.naam === d.spreker);
-      const el = x && document.getElementById(sprekerAnker(x));
-      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1600); }
-      return;
-    }
+    if (d.groep) { filter.groepen.has(d.groep) ? filter.groepen.delete(d.groep) : filter.groepen.add(d.groep); return render(); }
     if (d.view) { view = d.view; history.replaceState(null, '', '#' + view); window.scrollTo({ top: 0 }); return render(); }
     if (d.attime) { $('#modal').close(); filter.at = d.attime; view = 'list'; render(); $('#at').value = filter.at; return; }
     if ('clearwin' in d) { filter.win = null; return render(); }
@@ -820,7 +767,7 @@
     }
     if ('addzaal' in d) return wijzig(dd => { dd.zalen.push({ naam: `Nieuwe zaal ${dd.zalen.length + 1}`, capaciteit: null }); }, 'Zaal toegevoegd', `Nieuwe zaal ${data.zalen.length + 1}`);
     if (d.delzaal) { const z = data.zalen[+d.delzaal]?.naam; return wijzig(dd => { dd.zalen.splice(+d.delzaal, 1); }, 'Zaal verwijderd', z); }
-    if ('addtype' in d) return wijzig(dd => { dd.typen.push({ naam: `Nieuw type ${dd.typen.length + 1}`, kleur: 'blauw', uitleg: '' }); }, 'Type toegevoegd', `Nieuw type ${data.typen.length + 1}`);
+    if ('addtype' in d) return wijzig(dd => { dd.typen.push({ naam: `Nieuwe werkvorm ${dd.typen.length + 1}`, uitleg: '' }); }, 'Type toegevoegd', `Nieuw type ${data.typen.length + 1}`);
     if (d.deltype) { const t = data.typen[+d.deltype]?.naam; return wijzig(dd => { dd.typen.splice(+d.deltype, 1); }, 'Type verwijderd', t); }
     if ('addadmin' in d) return addAdmin();
     if (d.deladmin) {
@@ -828,28 +775,16 @@
       if (a && confirm(`${a.email} verwijderen als beheerder?`)) Cloud.removeAdmin(d.deladmin).then(() => Cloud.log('Beheerder verwijderd', a.email)).catch(err => alert('Verwijderen is niet gelukt: ' + err.message));
       return;
     }
-    if ('addspreker' in d) return wijzig(dd => { dd.sprekers.push({ naam: 'Nieuwe spreker', zoek: 'Nieuwe spreker', organisatie: '', status: 'concept', bio: '', bronnen: [] }); }, 'Spreker toegevoegd', 'Nieuwe spreker');
-    if (d.delspreker) {
-      const x = data.sprekers[+d.delspreker];
-      if (x && confirm(`Het kopje voor ${x.naam} verwijderen?`)) wijzig(dd => { dd.sprekers.splice(+d.delspreker, 1); }, 'Spreker verwijderd', x.naam);
-      return;
-    }
-    if ('sprekersaanvullen' in d) {
-      const nieuw = [...new Set(data.sessies.map(s => s.spreker).filter(Boolean))]
-        .filter(sp => !data.sprekers.some(x => norm(sp).includes(norm(x.zoek))));
-      if (!nieuw.length) return toast('Alle sprekers hebben al een kopje');
-      return wijzig(dd => nieuw.forEach(sp => dd.sprekers.push({ naam: sp, zoek: sp, organisatie: '', status: 'concept', bio: '', bronnen: [] })), `${nieuw.length} spreker(s) aangemaakt`, nieuw.join(', '));
-    }
     if ('export' in d) return exportBackup();
     if ('import' in d) return $('#importFile').click();
-    if ('publish' in d) return wijzig(() => {}, 'Programma staat online', 'Standaardprogramma gepubliceerd');
+    if ('publish' in d) { verouderd = false; return wijzig(() => {}, 'Programma staat online', `Programma versie ${data.versie} gepubliceerd (${data.sessies.length} sessies)`); }
   });
 
   // Beheervelden: opslaan bij verlaten van het veld.
   document.addEventListener('change', e => {
     const el = e.target, d = el.dataset;
     if (el.id === 'importFile' && el.files[0]) { importBackup(el.files[0]); el.value = ''; return; }
-    if (d.info) return wijzig(dd => { dd.info[d.info] = el.value.trim(); }, 'Congresinfo gewijzigd', ({ naam: 'Naam', ondertitel: 'Ondertitel', datum: 'Datum', locatie: 'Locatie', intro: 'Introductietekst', overOns: 'Over ons' }[d.info] || d.info) + (d.info === 'datum' || d.info === 'naam' || d.info === 'locatie' ? ': ' + el.value.trim() : ''));
+    if (d.info) return wijzig(dd => { dd.info[d.info] = el.value.trim(); }, 'Congresinfo gewijzigd', ({ naam: 'Naam', ondertitel: 'Ondertitel', datum: 'Datum', locatie: 'Locatie', intro: 'Introductietekst', nb: 'Toelichting doelgroepen' }[d.info] || d.info) + (d.info === 'datum' || d.info === 'naam' || d.info === 'locatie' ? ': ' + el.value.trim() : ''));
     if (d.zaal) {
       const idx = +d.zaal, old = data.zalen[idx].naam;
       if (d.field === 'naam') {
@@ -859,9 +794,9 @@
       }
       return wijzig(dd => { dd.zalen[idx].capaciteit = el.value === '' ? null : Math.max(0, +el.value); }, 'Zaal aangepast', `${old}: ${el.value || '–'} plaatsen`);
     }
-    if (d.spr) {
-      const idx = +d.spr;
-      return wijzig(dd => { dd.sprekers[idx][d.field] = el.value.trim(); if (d.field === 'naam' && !dd.sprekers[idx].zoek) dd.sprekers[idx].zoek = el.value.trim(); }, 'Spreker aangepast', `${data.sprekers[idx].naam} · ${({ naam: 'naam', organisatie: 'organisatie', zoek: 'koppeling', bio: 'tekst', status: 'status: ' + el.value }[d.field] || d.field)}`);
+    if (d.dg) {
+      const idx = +d.dg, g = data.doelgroepen[idx];
+      return wijzig(dd => { dd.doelgroepen[idx][d.field] = el.value.trim(); }, 'Doelgroep aangepast', `${g.naam} · ${({ naam: 'naam', omschrijving: 'omschrijving', bg: 'kleur', accent: 'accentkleur' }[d.field])}`);
     }
     if (d.typ) {
       const idx = +d.typ, old = data.typen[idx].naam;
@@ -870,7 +805,7 @@
         if (!nieuw || (nieuw !== old && data.typen.some(t => t.naam === nieuw))) { alert('Kies een unieke, niet-lege naam.'); el.value = old; return; }
         return wijzig(dd => { dd.typen[idx].naam = nieuw; dd.sessies.forEach(s => { if (s.type === old) s.type = nieuw; }); }, 'Type hernoemd', `${old} → ${nieuw}`);
       }
-      return wijzig(dd => { dd.typen[idx][d.field] = el.value.trim(); }, 'Type aangepast', `${old} · ${d.field === 'kleur' ? 'kleur' : 'uitleg'}`);
+      return wijzig(dd => { dd.typen[idx][d.field] = el.value.trim(); }, 'Type aangepast', `${old} · uitleg`);
     }
   });
 
@@ -889,7 +824,6 @@
       const nieuw = tmp.querySelector('.log-list'); if (ul && nieuw) ul.replaceWith(nieuw);
       return;
     }
-    if (e.target.id === 'sprekerZoek') { sprekerZoek = e.target.value; renderSprekers(); }
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && e.target.id === 'newAdmin') { e.preventDefault(); addAdmin(); }
@@ -899,9 +833,10 @@
   $('#q').addEventListener('input', e => { filter.q = norm(e.target.value.trim()); renderGrid(); renderList(); });
   $('#at').addEventListener('change', e => { filter.at = e.target.value; render(); });
   $('#dur').addEventListener('change', e => { filter.dur = e.target.value; render(); });
+  $('#werkvorm').addEventListener('change', e => { filter.werkvorm = e.target.value; render(); });
   $('#fits').addEventListener('change', e => { filter.fits = e.target.checked; render(); });
   $('#reset').addEventListener('click', () => {
-    Object.assign(filter, { q: '', at: '', dur: '', fits: false, win: null }); filter.types.clear();
+    Object.assign(filter, { q: '', werkvorm: '', at: '', dur: '', fits: false, win: null }); filter.groepen.clear(); $('#werkvorm').value = '';
     $('#q').value = ''; $('#at').value = ''; $('#dur').value = ''; $('#fits').checked = false; render();
   });
 
@@ -969,9 +904,9 @@
       };
       for (const s of m) {
         if (s.start > cursor) vrij(cursor, s.start);
-        const p = PALET[typeInfo(s.type).kleur] || PALET.navy;
-        const titel = doc.setFont('helvetica', 'bold').setFontSize(11.5).splitTextToSize(s.titel, R - L - 34);
-        const meta = doc.setFont('helvetica', 'normal').setFontSize(9).splitTextToSize(`${s.zaal}${s.cap ? ` (${s.cap} pl.)` : ''}  ·  ${s.spreker}  ·  ${s.type}`, R - L - 34);
+        const g = dgInfo(s.doelgroep), p = { c: g.accent, bg: g.bg };
+        const titel = doc.setFont('helvetica', 'bold').setFontSize(11.5).splitTextToSize((s.nr ? s.nr + '. ' : '') + s.titel, R - L - 34);
+        const meta = doc.setFont('helvetica', 'normal').setFontSize(9).splitTextToSize([s.zaal + (s.cap ? ` (${s.cap} pl.)` : ''), s.spreker, s.type, g.naam].filter(Boolean).join('  ·  '), R - L - 34);
         const kort = (s.samenvatting || s.beschrijving || '').replace(/\*\*/g, '');
         const beschr = kort ? doc.setFontSize(8.5).splitTextToSize(kort, R - L - 34).slice(0, 4) : [];
         const h = 6 + titel.length * 5 + meta.length * 4.2 + (beschr.length ? 1.5 + beschr.length * 3.8 : 0) + 3;
@@ -1049,11 +984,19 @@
 
   /* ===================== Start ===================== */
   const startView = location.hash.slice(1);
-  if (['grid', 'list', 'sprekers', 'over', 'my', 'beheer'].includes(startView)) view = startView;
+  if (['grid', 'list', 'my', 'beheer'].includes(startView)) view = startView;
 
   Cloud.init({
     onData(d) {
-      data = normalize(d || clone(window.STANDAARD_PROGRAMMA));
+      const STD = window.STANDAARD_PROGRAMMA;
+      verouderd = !!d && (d.versie || 1) < (STD.versie || 1);
+      if (verouderd) {
+        // Nieuw programma (PDF) vervangt de oude online versie; zelf ingevulde datum en locatie blijven behouden.
+        const nieuw = clone(STD);
+        ['datum', 'locatie'].forEach(k => { if (d.info?.[k]) nieuw.info[k] = d.info[k]; });
+        d = nieuw;
+      }
+      data = normalize(d || clone(STD));
       prepare(); renderTimes(); render(); gedeeld();
     },
     onAuth() {
